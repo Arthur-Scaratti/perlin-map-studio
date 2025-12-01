@@ -1,27 +1,28 @@
 import numpy as np
 from noise import pnoise2
 import time
+from config import GRID_SIZE, BIOME_SIZE, BIOME_GRID_SHAPE
 
 class TerrainModel:
     """
     Cada bioma possui seu próprio parâmetro de escala para o Perlin.
     """
 
-    TOTAL_SHAPE = (800, 800)
-    BIOME_SIZE = 100
-    BIOME_GRID_SHAPE = (TOTAL_SHAPE[0] // BIOME_SIZE,
-                         TOTAL_SHAPE[1] // BIOME_SIZE)
-
-    GLOBAL_SEED = 242 
+    GLOBAL_SEED = 242
 
     def __init__(self, biomes_data=None):
-        self.shape = self.TOTAL_SHAPE
 
+        self.shape = (GRID_SIZE, GRID_SIZE)
+        self.BIOME_SIZE = BIOME_SIZE
+        self.BIOME_GRID_SHAPE = BIOME_GRID_SHAPE
+        self.Z_offset = np.zeros(self.shape)
+        # define dados dos biomas
         if biomes_data is None:
             self.biomes_params = self._initialize_default_biomes()
         else:
             self.biomes_params = biomes_data
 
+        # malha X/Y
         self.X, self.Y = np.meshgrid(
             np.arange(self.shape[0]),
             np.arange(self.shape[1])
@@ -31,8 +32,20 @@ class TerrainModel:
         self.X_flat = self.X.ravel()
         self.Y_flat = self.Y.ravel()
 
+
+        # geração inicial
         self.generate_full_noise()
 
+        # -------------------------
+    # Helpers públicos
+    # -------------------------
+    def set_biome_scale(self, r, c, value):
+        self.biomes_params[r, c]["scale"] = float(value)
+
+    def get_biome_scale(self, r, c):
+        return float(self.biomes_params[r, c]["scale"])
+
+    
     def _initialize_default_biomes(self):
         """Cada bioma recebe uma escala entre 0.01 e 0.1."""
         biomes = np.empty(self.BIOME_GRID_SHAPE, dtype=object)
@@ -40,7 +53,7 @@ class TerrainModel:
         for r in range(self.BIOME_GRID_SHAPE[0]):
             for c in range(self.BIOME_GRID_SHAPE[1]):
                 biomes[r, c] = {
-                    "scale": 0.008 + 0.04 * np.random.rand()
+                    "scale": 0.01 + 0.01 * np.random.rand()
                 }
 
         return biomes
@@ -67,11 +80,11 @@ class TerrainModel:
                     base=self.GLOBAL_SEED
                 )
 
-        # normaliza para 0–1
+        # normalização
         mn, mx = self.Z_base.min(), self.Z_base.max()
         self.Z_base = (self.Z_base - mn) / (mx - mn)
 
-        print(f"[TerrainModel] Geração completa (800x800) em {time.time() - start:.2f}s")
+        print(f"[TerrainModel] Geração completa ({GRID_SIZE}x{GRID_SIZE}) em {time.time() - start:.2f}s")
 
     def get_points_data(self, amplitude):
         Z = self.Z_base.ravel() * (amplitude / 10.0)

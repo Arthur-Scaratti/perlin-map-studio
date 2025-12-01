@@ -13,8 +13,8 @@ class VisPyCanvas(scene.SceneCanvas):
         self.view = self.central_widget.add_view()
         self.view.camera = "turntable"
         self.view.camera.set_range(
-            x=[0, model.shape[0]],
-            y=[0, model.shape[1]],
+            x=[0, model.shape[1]],  # x corresponde a colunas (W)
+            y=[0, model.shape[0]],  # y corresponde a linhas (H)
             z=[-50, 50]
         )
         self.view.camera.scale_factor = 1000

@@ -4,7 +4,6 @@ import time
 
 class TerrainModel:
     """
-    Gera um mapa 1000x1000 dividido em 5x5 biomas (200x200 cada).
     Cada bioma possui seu próprio parâmetro de escala para o Perlin.
     """
 
@@ -13,12 +12,11 @@ class TerrainModel:
     BIOME_GRID_SHAPE = (TOTAL_SHAPE[0] // BIOME_SIZE,
                          TOTAL_SHAPE[1] // BIOME_SIZE)
 
-    GLOBAL_SEED = 242  # semente fixa
+    GLOBAL_SEED = 242 
 
     def __init__(self, biomes_data=None):
         self.shape = self.TOTAL_SHAPE
 
-        # se não receberam biomas externos, cria automaticamente
         if biomes_data is None:
             self.biomes_params = self._initialize_default_biomes()
         else:
@@ -42,7 +40,7 @@ class TerrainModel:
         for r in range(self.BIOME_GRID_SHAPE[0]):
             for c in range(self.BIOME_GRID_SHAPE[1]):
                 biomes[r, c] = {
-                    "scale": 0.01 + 0.09 * np.random.rand()
+                    "scale": 0.008 + 0.04 * np.random.rand()
                 }
 
         return biomes
@@ -61,7 +59,7 @@ class TerrainModel:
                 self.Z_base[i, j] = pnoise2(
                     i * scale,
                     j * scale,
-                    octaves=4,
+                    octaves=6,
                     persistence=0.5,
                     lacunarity=2.0,
                     repeatx=R,

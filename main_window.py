@@ -13,17 +13,18 @@ class MainWindow(QWidget):
 
         self.setWindowTitle("Mapa 3D Interativo com Ruído Perlin")
         self.setGeometry(100, 100, 800, 700)
-    
-        self.exporter = HeightmapExporter()
+
         self.model = TerrainModel()
         self.vispy_widget = VisPyCanvas(self.model)
 
         layout.addWidget(self.vispy_widget.native)
 
-        self.export_button = QPushButton("Exportar Heightmap (16-bit)")
+        # --- Botão de exportação ---
+        self.export_button = QPushButton("Exportar Heightmap (PNG 16-bit)")
         self.export_button.clicked.connect(self.export_terrain)
         layout.addWidget(self.export_button)
 
+        # --- Slider de amplitude (não atualiza mais automaticamente) ---
         self.label_altura = QLabel("Amplitude da Altura: 10.0")
         layout.addWidget(self.label_altura)
 
@@ -31,25 +32,42 @@ class MainWindow(QWidget):
         self.slider.setMinimum(1)
         self.slider.setMaximum(50)
         self.slider.setValue(10)
-        self.slider.valueChanged.connect(self.update_amplitude)
+        self.slider.valueChanged.connect(self.on_amplitude_change)
         layout.addWidget(self.slider)
+
+        # --- novo botão: Atualizar Mapa ---
+        self.apply_button = QPushButton("Atualizar mapa")
+        self.apply_button.clicked.connect(self.apply_updates)
+        layout.addWidget(self.apply_button)
 
         self.setLayout(layout)
 
-    def update_amplitude(self, value):
-        amplitude = float(value)
-        self.label_altura.setText(f"Amplitude da Altura: {amplitude:.1f}")
-        self.vispy_widget.update_visualization(amplitude)
+        # estado interno
+        self.pending_amplitude = 10.0
 
+        # exporter
+        self.exporter = HeightmapExporter()
+
+
+    def on_amplitude_change(self, value):
+        self.pending_amplitude = float(value)
+        self.label_altura.setText(f"Amplitude da Altura: {self.pending_amplitude:.1f}")
+
+
+    def apply_updates(self):
+        self.model.generate_full_noise()
+        self.vispy_widget.update_visualization(self.pending_amplitude)
+
+    # ===========================================================
+    # Exportação
+    # ===========================================================
     def export_terrain(self):
-        """Exporta o Heightmap atual, usando QFileDialog."""
-        amplitude_atual = self.slider.value()
         Z_2D = self.model.Z_base
 
         file_path, _ = QFileDialog.getSaveFileName(
             self,
             "Salvar Heightmap",
-            "terrain_biome.png",
+            "terrain_biome_1000x1000.png",
             "PNG Files (*.png)"
         )
 
@@ -57,7 +75,7 @@ class MainWindow(QWidget):
             self.exporter.export_heightmap(Z_2D, output_path=file_path)
             QMessageBox.information(
                 self,
-            "Exportação Concluída",
-            f"O Heightmap foi salvo em:\n{file_path}",
-            QMessageBox.StandardButton.Ok
-        )
+                "Exportação Concluída",
+                f"O Heightmap foi salvo em:\n{file_path}",
+                QMessageBox.StandardButton.Ok
+            )

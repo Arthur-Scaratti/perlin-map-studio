@@ -1,12 +1,9 @@
 import numpy as np
-from noise import pnoise2
+from noise import pnoise2 
 import time
 from config import GRID_SIZE, BIOME_SIZE, BIOME_GRID_SHAPE
 
 class TerrainModel:
-    """
-    Cada bioma possui seu próprio parâmetro de escala para o Perlin.
-    """
 
     GLOBAL_SEED = 242
 
@@ -32,11 +29,10 @@ class TerrainModel:
         self.X_flat = self.X.ravel()
         self.Y_flat = self.Y.ravel()
 
-
-        # geração inicial
+        self._generate_base_height_map() # gera mapa de altura base (baixa frequência)
         self.generate_full_noise()
 
-        # -------------------------
+    # -------------------------
     # Helpers públicos
     # -------------------------
     def set_biome_scale(self, r, c, value):
@@ -59,33 +55,56 @@ class TerrainModel:
         return biomes
 
     def generate_full_noise(self):
-        """Gera Perlin Noise aplicando o parâmetro de cada bioma."""
+        """
+        Gera o ruído final, onde o ruído de detalhe é somado como 
+        deslocamento (offset) sobre o mapa de altura base suave.
+        """
         start = time.time()
         R, C = self.shape
+        
+        # Parâmetros de Ponderação (Ajuste esses valores para controlar o resultado)
+        # O quão 'montanhoso' ou 'acidentado' o detalhe será
+        DETAIL_AMPLITUDE_FACTOR = 1 
+        # Esta é a proporção do ruído de detalhe ([-1, 1]) que será somada.
+        # Ex: 1 significa que o detalhe pode adicionar ou subtrair até 1 da altura base.
 
         for i in range(R):
             for j in range(C):
+                # 1. Obter a escala do bioma (Ruído de Detalhe)
                 biome_r = i // self.BIOME_SIZE
                 biome_c = j // self.BIOME_SIZE
-                scale = self.biomes_params[biome_r, biome_c]["scale"]
+                scale_detail = self.biomes_params[biome_r, biome_c]["scale"]
 
-                self.Z_base[i, j] = pnoise2(
-                    i * scale,
-                    j * scale,
+                # 2. Gerar o Ruído de Detalhe (Varia em torno de [-1, 1])
+                Z_detail_noise = pnoise2(
+                    i * scale_detail, 
+                    j * scale_detail,
                     octaves=6,
                     persistence=0.5,
                     lacunarity=2.0,
                     repeatx=R,
                     repeaty=C,
-                    base=self.GLOBAL_SEED
+                    base=self.GLOBAL_SEED 
                 )
+                
+                # 3. Obter a Altura Base (já normalizada para [0, 1])
+                Z_base_height = self.Z_base_map[i, j]
+                
+                # 4. Combinação: Soma do Detalhe como um Offset
+                # Z_detail_noise * DETAIL_AMPLITUDE_FACTOR (Varia de [-1, 1])
+                # É somado à Altura Base (Varia de [0, 1])
+                self.Z_base[i, j] = Z_base_height + (Z_detail_noise * DETAIL_AMPLITUDE_FACTOR)
 
-        # normalização
-        mn, mx = self.Z_base.min(), self.Z_base.max()
-        self.Z_base = (self.Z_base - mn) / (mx - mn)
+        # 5. Normalização Final ???? nao funcionou muito bem
+        # Ela garante que o ponto mais baixo seja 0 e o mais alto seja 1, 
+        # preenchendo o espaço de altura disponível.
+        #mn, mx = self.Z_base.min(), self.Z_base.max()
+        #if mx != mn:
+        #    self.Z_base = (self.Z_base - mn) / (mx - mn)
+        self.Z_base = np.clip(self.Z_base, 0.0, 1.5)
 
         print(f"[TerrainModel] Geração completa ({GRID_SIZE}x{GRID_SIZE}) em {time.time() - start:.2f}s")
-
+    
     def get_points_data(self, amplitude):
         Z = self.Z_base.ravel() * (amplitude / 10.0)
         return np.column_stack((self.X_flat, self.Y_flat, Z))
@@ -101,3 +120,31 @@ class TerrainModel:
                 faces.append([k + C + 1, k + C, k + 1])
 
         return np.array(faces, dtype=np.uint32)
+    
+    def _generate_base_height_map(self):
+        """Gera um mapa de altura base (baixa frequência) para grandes formas do terreno."""
+        R, C = self.shape
+        self.Z_base_map = np.zeros(self.shape)
+
+        # Scale BEM BAIXA para formas grandes
+        BASE_SCALE_FACTOR = 0.005
+
+        for i in range(R):
+            for j in range(C):
+                self.Z_base_map[i, j] = pnoise2(
+                    i * BASE_SCALE_FACTOR,
+                    j * BASE_SCALE_FACTOR,
+                    octaves=4, # Menos oitavas para ser mais suave
+                    persistence=0.5,
+                    lacunarity=2.0,
+                    repeatx=R,
+                    repeaty=C,
+                    base=self.GLOBAL_SEED + 100 # Uma seed diferente para garantir independência
+                )
+        
+        
+        # Vou normalizar para [0, 1], o impacto da altura será controlado pela amplitude final.
+        mn, mx = self.Z_base_map.min(), self.Z_base_map.max()
+        self.Z_base_map = (self.Z_base_map - mn) / (mx - mn)
+        
+        print("[TerrainModel] Mapa de altura base gerado.")

@@ -25,7 +25,7 @@ class SetupForm(QWidget):
         self.spin_size = QSpinBox()
         self.spin_size.setRange(50, 2000)
         self.spin_size.setSingleStep(50)
-        self.spin_size.setValue(200) # Default menor para testar rapido
+        self.spin_size.setValue(500) # Default menor para inicializar rapido
         form_gen.addRow("Map Size (px):", self.spin_size)
         
         self.spin_octaves = QSpinBox()
@@ -102,7 +102,7 @@ class SetupForm(QWidget):
             "map_size": self.spin_size.value(),
             "octaves": self.spin_octaves.value(),
             "use_base_map": self.grp_base.isChecked(),
-            # Os abaixo só importam se use_base_map for True, mas salvamos tudo
+            # Só importam se use_base_map for True, mas salvamos tudo
             "base_scale": self.spin_base_scale.value(),
             "seed_adder": self.spin_seed_adder.value(),
             "amplitude_factor": self.spin_amplitude_factor.value(),

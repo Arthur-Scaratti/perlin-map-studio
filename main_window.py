@@ -101,9 +101,6 @@ class MainWindow(QWidget):
         Chamado quando o botão 'GERAR MAPA' é clicado.
         Reconfigura o modelo do zero, regenera malhas e noise.
         """
-        # 1. Detectar mudança de tamanho para recriar o Canvas se necessário
-        # VisPy é chato com mudança de numero de vertices.
-        # A maneira mais segura é atualizar o objeto visual com novos faces.
         
         old_shape = self.model.shape
         
@@ -112,7 +109,6 @@ class MainWindow(QWidget):
         
         new_shape = self.model.shape
         
-        # Se o tamanho mudou, precisamos avisar o VisPy para pegar novas faces
         if old_shape != new_shape:
             # Atualiza faces no VisPy
             new_faces = self.model.get_mesh_faces()
@@ -151,7 +147,7 @@ class MainWindow(QWidget):
                 spin.setSingleStep(0.001)
                 spin.setValue(self.model.biomes_params[r, c]["scale"])
                 # Conecta sinal
-                # Usamos lambda com valores padrão para capturar r, c no loop
+                # Usando lambda com valores padrão para capturar r, c no loop
                 spin.valueChanged.connect(lambda val, rr=r, cc=c: self.update_biome_local_param(rr, cc, val))
                 
                 self.biome_layout.addWidget(spin, r, c)
@@ -168,7 +164,7 @@ class MainWindow(QWidget):
             self.vispy_widget.update_visualization(self.pending_amplitude)
 
     # ==========================================================
-    # Outros Callbacks
+    # Callbacks
     # ==========================================================
     def on_amplitude_change(self, value):
         self.pending_amplitude = float(value)

@@ -30,7 +30,7 @@ class VisPyCanvas(scene.SceneCanvas):
         
         # --- LÓGICA DE COR CORRIGIDA (ABSOLUTA) ---
         
-        # Precisamos descobrir a altura "normalizada" (0 a 1) para pintar corretamente.
+        # Descobrir a altura "normalizada" (0 a 1) para pintar corretamente.
         # Como points[:, 2] já está multiplicado pela amplitude, vamos reverter ou usar o Z_base original.
         # O jeito mais fácil é pegar o Z_base original do modelo, que vai de 0 a 1.
         z_raw = self.model.Z_base.ravel() 

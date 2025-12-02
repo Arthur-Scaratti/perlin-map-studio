@@ -116,7 +116,6 @@ class TerrainModel:
         
         for i in range(R):
             for j in range(C):
-                # Detalhe (Bioma)
                 # Proteção de índice caso o bioma seja menor que o grid por arredondamento
                 b_r = min(i // self.BIOME_SIZE, self.BIOME_GRID_SHAPE[0]-1)
                 b_c = min(j // self.BIOME_SIZE, self.BIOME_GRID_SHAPE[1]-1)
@@ -145,8 +144,7 @@ class TerrainModel:
 
                 self.Z_base[i, j] = val
 
-        # 5. Clip Final (Apenas se usar base map, ou geral conforme pedido)
-        # O user pediu clip ajustável de 1.0 a 1.5
+        # 5. Clip Final (Apenas se usar base map)
         self.Z_base = np.clip(self.Z_base, 0.0, clip_max)
 
         print(f"[Model] Geração completa em {time.time() - start_total:.2f}s")

@@ -1,7 +1,7 @@
 import json
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QFormLayout, QSpinBox, QDoubleSpinBox, 
-    QCheckBox, QGroupBox, QPushButton, QFileDialog, QMessageBox
+    QGroupBox, QPushButton, QFileDialog, QMessageBox
 )
 
 class SetupForm(QWidget):
@@ -103,7 +103,7 @@ class SetupForm(QWidget):
             "octaves": self.spin_octaves.value(),
             "use_base_map": self.grp_base.isChecked(),
             
-            # Só importa se use_base_map for True
+            # Só interessa se use_base_map for True, mas não faz mal coletar sempre
             "base_scale": self.spin_base_scale.value(),
             "seed_adder": self.spin_seed_adder.value(),
             "amplitude_factor": self.spin_amplitude_factor.value(),

@@ -25,7 +25,7 @@ class SetupForm(QWidget):
         self.spin_size = QSpinBox()
         self.spin_size.setRange(50, 2000)
         self.spin_size.setSingleStep(50)
-        self.spin_size.setValue(500) # Default menor para inicializar rapido
+        self.spin_size.setValue(500) 
         form_gen.addRow("Map Size (px):", self.spin_size)
         
         self.spin_octaves = QSpinBox()
@@ -39,7 +39,7 @@ class SetupForm(QWidget):
         # --- Grupo: Base Height Map ---
         self.grp_base = QGroupBox("Base Height Map")
         self.grp_base.setCheckable(True)
-        self.grp_base.setChecked(True) # Default ativado
+        self.grp_base.setChecked(True)
         form_base = QFormLayout()
         
         self.spin_base_scale = QDoubleSpinBox()
@@ -57,7 +57,7 @@ class SetupForm(QWidget):
         self.spin_amplitude_factor = QDoubleSpinBox()
         self.spin_amplitude_factor.setRange(0.1, 1.0)
         self.spin_amplitude_factor.setSingleStep(0.1)
-        self.spin_amplitude_factor.setValue(0.2)
+        self.spin_amplitude_factor.setValue(0.7)
         form_base.addRow("Detalhe Amp. Factor:", self.spin_amplitude_factor)
         
         self.spin_clip = QDoubleSpinBox()
@@ -102,7 +102,8 @@ class SetupForm(QWidget):
             "map_size": self.spin_size.value(),
             "octaves": self.spin_octaves.value(),
             "use_base_map": self.grp_base.isChecked(),
-            # Só importam se use_base_map for True, mas salvamos tudo
+            
+            # Só importa se use_base_map for True
             "base_scale": self.spin_base_scale.value(),
             "seed_adder": self.spin_seed_adder.value(),
             "amplitude_factor": self.spin_amplitude_factor.value(),

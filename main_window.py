@@ -64,6 +64,11 @@ class MainWindow(QWidget):
     def on_generate_request(self, params):
         old_shape = self.model.shape
         
+        shape = params.get("shape", "square")
+        shape_params = params.get("shape_params", {})
+        if shape != "square":
+            print(f"[INFO] Shape '{shape}' ainda não implementado, usando square.")
+
         self.model.configure_and_generate(params)
         
         new_shape = self.model.shape

@@ -1,8 +1,10 @@
 import json
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QFormLayout, QSpinBox, QDoubleSpinBox, 
-    QGroupBox, QPushButton, QFileDialog, QMessageBox
+    QWidget, QVBoxLayout, QFormLayout, QSpinBox, QDoubleSpinBox,
+    QGroupBox, QPushButton, QFileDialog, QMessageBox,
+    QHBoxLayout, QButtonGroup, QRadioButton
 )
+
 
 class SetupForm(QWidget):
     def __init__(self, on_generate_callback):
@@ -34,7 +36,81 @@ class SetupForm(QWidget):
         
         grp_gen.setLayout(form_gen)
         layout.addWidget(grp_gen)
+
+         # =========================
+        # Shape Selection
+        # =========================
+        grp_shape = QGroupBox("Shape")
+        shape_layout = QVBoxLayout()
+
+        btn_row = QHBoxLayout()
+        self.shape_group = QButtonGroup(self)
+        self.shape_group.setExclusive(True)
+
+        self.rb_square = QRadioButton("Square")
+        self.rb_round = QRadioButton("Round Flat")
+        self.rb_sphere = QRadioButton("Spherical")
+
+        self.rb_square.setChecked(True)
+
+        self.shape_group.addButton(self.rb_square)
+        self.shape_group.addButton(self.rb_round)
+        self.shape_group.addButton(self.rb_sphere)
+
+        btn_row.addWidget(self.rb_square)
+        btn_row.addWidget(self.rb_round)
+        btn_row.addWidget(self.rb_sphere)
+
+        shape_layout.addLayout(btn_row)
+
+        #################################
+        self.grp_square = QGroupBox("Square Config")
+        form_square = QFormLayout()
+
+        self.spin_square_side = QSpinBox()
+        self.spin_square_side.setRange(50, 4000)
+        self.spin_square_side.setValue(500)
+        form_square.addRow("Side:", self.spin_square_side)
+
+        self.grp_square.setLayout(form_square)
+        shape_layout.addWidget(self.grp_square)
+
+        ################################
+        self.grp_round = QGroupBox("Round Config")
+        form_round = QFormLayout()
+
+        self.spin_round_radius = QSpinBox()
+        self.spin_round_radius.setRange(50, 4000)
+        self.spin_round_radius.setValue(250)
+        form_round.addRow("Radius:", self.spin_round_radius)
+
+        self.grp_round.setLayout(form_round)
+        self.grp_round.setVisible(False)
+        shape_layout.addWidget(self.grp_round)
+
+        ################################
+        self.grp_sphere = QGroupBox("Sphere Config")
+        form_sphere = QFormLayout()
+
+        self.spin_sphere_width = QSpinBox()
+        self.spin_sphere_width.setRange(50, 4000)
+        self.spin_sphere_width.setValue(500)
+        form_sphere.addRow("Width:", self.spin_sphere_width)
+
+        self.grp_sphere.setLayout(form_sphere)
+        self.grp_sphere.setVisible(False)
+        shape_layout.addWidget(self.grp_sphere)
+
+        ################################ toggle
+        self.rb_square.toggled.connect(self.update_shape_visibility)
+        self.rb_round.toggled.connect(self.update_shape_visibility)
+        self.rb_sphere.toggled.connect(self.update_shape_visibility)
+
+        grp_shape.setLayout(shape_layout)
+        layout.addWidget(grp_shape)
+        ################################
         
+        ################################
         self.grp_base = QGroupBox("Base Height Map")
         self.grp_base.setCheckable(True)
         self.grp_base.setChecked(True)
@@ -99,11 +175,37 @@ class SetupForm(QWidget):
         
         self.setLayout(layout)
 
+
+    def update_shape_visibility(self):
+        self.grp_square.setVisible(self.rb_square.isChecked())
+        self.grp_round.setVisible(self.rb_round.isChecked())
+        self.grp_sphere.setVisible(self.rb_sphere.isChecked())
+
     def collect_data(self):
+        if self.rb_square.isChecked():
+            shape = "square"
+            shape_params = {
+                "side": self.spin_square_side.value()
+            }
+        elif self.rb_round.isChecked():
+            shape = "round"
+            shape_params = {
+                "radius": self.spin_round_radius.value()
+            }
+        else:
+            shape = "sphere"
+            shape_params = {
+                "width": self.spin_sphere_width.value()
+            }
+
         data = {
             "seed": self.spin_seed.value(),
             "map_size": self.spin_size.value(),
             "octaves": self.spin_octaves.value(),
+
+            "shape": shape,
+            "shape_params": shape_params,
+
             "use_base_map": self.grp_base.isChecked(),
             "base_scale": self.spin_base_scale.value(),
             "detail_scale": self.spin_detail_scale.value(),

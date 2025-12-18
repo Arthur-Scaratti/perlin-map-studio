@@ -13,7 +13,6 @@ class SetupForm(QWidget):
     def setup_ui(self):
         layout = QVBoxLayout()
         
-        # --- Grupo: Configurações Gerais ---
         grp_gen = QGroupBox("Geral")
         form_gen = QFormLayout()
         
@@ -36,7 +35,6 @@ class SetupForm(QWidget):
         grp_gen.setLayout(form_gen)
         layout.addWidget(grp_gen)
         
-        # --- Grupo: Base Height Map ---
         self.grp_base = QGroupBox("Base Height Map")
         self.grp_base.setCheckable(True)
         self.grp_base.setChecked(True)
@@ -48,6 +46,13 @@ class SetupForm(QWidget):
         self.spin_base_scale.setSingleStep(0.0005)
         self.spin_base_scale.setValue(0.005)
         form_base.addRow("Base Scale:", self.spin_base_scale)
+        
+        self.spin_detail_scale = QDoubleSpinBox()
+        self.spin_detail_scale.setRange(0.001, 0.1)
+        self.spin_detail_scale.setDecimals(4)
+        self.spin_detail_scale.setSingleStep(0.001)
+        self.spin_detail_scale.setValue(0.01)
+        form_base.addRow("Detail Scale:", self.spin_detail_scale)
         
         self.spin_seed_adder = QSpinBox()
         self.spin_seed_adder.setRange(1, 1000)
@@ -74,7 +79,6 @@ class SetupForm(QWidget):
         self.grp_base.setLayout(form_base)
         layout.addWidget(self.grp_base)
         
-        # --- Botões de Ação ---
         btn_layout = QVBoxLayout()
         
         self.btn_generate = QPushButton("GERAR MAPA")
@@ -91,20 +95,18 @@ class SetupForm(QWidget):
         btn_layout.addWidget(self.btn_load_json)
         
         layout.addLayout(btn_layout)
-        layout.addStretch() # Empurra tudo pra cima
+        layout.addStretch()
         
         self.setLayout(layout)
 
     def collect_data(self):
-        """Coleta todos os dados do formulário em um dicionário."""
         data = {
             "seed": self.spin_seed.value(),
             "map_size": self.spin_size.value(),
             "octaves": self.spin_octaves.value(),
             "use_base_map": self.grp_base.isChecked(),
-            
-            # Só interessa se use_base_map for True, mas não faz mal coletar sempre
             "base_scale": self.spin_base_scale.value(),
+            "detail_scale": self.spin_detail_scale.value(),
             "seed_adder": self.spin_seed_adder.value(),
             "amplitude_factor": self.spin_amplitude_factor.value(),
             "clip_max": self.spin_clip.value(),
@@ -139,14 +141,14 @@ class SetupForm(QWidget):
                 QMessageBox.critical(self, "Erro", f"Erro ao carregar: {str(e)}")
 
     def apply_data(self, data):
-        """Preenche o formulário com dados carregados."""
         self.spin_seed.setValue(data.get("seed", 242))
         self.spin_size.setValue(data.get("map_size", 200))
         self.spin_octaves.setValue(data.get("octaves", 6))
         self.grp_base.setChecked(data.get("use_base_map", True))
         
         self.spin_base_scale.setValue(data.get("base_scale", 0.005))
+        self.spin_detail_scale.setValue(data.get("detail_scale", 0.01))
         self.spin_seed_adder.setValue(data.get("seed_adder", 100))
-        self.spin_amplitude_factor.setValue(data.get("amplitude_factor", 0.2))
+        self.spin_amplitude_factor.setValue(data.get("amplitude_factor", 0.7))
         self.spin_clip.setValue(data.get("clip_max", 1.5))
         self.spin_base_octaves.setValue(data.get("octaves_base", 4))

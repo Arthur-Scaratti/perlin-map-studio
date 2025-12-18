@@ -66,6 +66,7 @@ class MainWindow(QWidget):
         
         shape = params.get("shape", "square")
         shape_params = params.get("shape_params", {})
+
         if shape != "square":
             print(f"[INFO] Shape '{shape}' ainda não implementado, usando square.")
 
@@ -76,11 +77,7 @@ class MainWindow(QWidget):
         if old_shape != new_shape:
             new_faces = self.model.get_mesh_faces()
             self.vispy_widget.faces = new_faces
-            self.vispy_widget.view.camera.set_range(
-                x=[0, new_shape[1]],
-                y=[0, new_shape[0]],
-                z=[-50, 50]
-            )
+            self.vispy_widget.update_camera()
 
         self.vispy_widget.update_visualization(self.pending_amplitude)
         

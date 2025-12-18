@@ -13,6 +13,8 @@ class TerrainModel:
         
         self.X, self.Y = None, None
         self.X_flat, self.Y_flat = None, None
+
+        self.mask = None  # <<< NOVO
         
         self.update_grid_size(DEFAULT_GRID_SIZE)
 
@@ -25,17 +27,39 @@ class TerrainModel:
         self.X_flat = self.X.ravel()
         self.Y_flat = self.Y.ravel()
         self.Z_base = np.zeros(self.shape)
+        self.mask = np.ones(self.shape, dtype=bool)  # <<< NOVO
 
     def get_mesh_faces(self):
         R, C = self.shape
         indices = np.arange(R * C).reshape(R, C)
+
+        # vértices base (igual ao original)
         v1 = indices[:-1, :-1].ravel()
         v2 = indices[:-1, 1:].ravel()
         v3 = indices[1:, :-1].ravel()
         v4 = indices[1:, 1:].ravel()
-    
+
         f1 = np.column_stack((v1, v2, v3))
         f2 = np.column_stack((v4, v3, v2))
+    # =========================
+    # MÁSCARAS DE FACE (vetorizadas) NOVO
+    # =========================
+        m = self.mask
+
+        mask_f1 = (
+            m[:-1, :-1] &
+            m[:-1, 1:] &
+            m[1:, :-1]
+        ).ravel()
+
+        mask_f2 = (
+            m[1:, 1:] &
+            m[1:, :-1] &
+            m[:-1, 1:]
+        ).ravel()
+
+        f1 = f1[mask_f1]
+        f2 = f2[mask_f2]
 
         return np.vstack((f1, f2)).astype(np.uint32)
 
@@ -46,13 +70,32 @@ class TerrainModel:
     def configure_and_generate(self, params):
         start_total = time.time()
         
-        if self.shape[0] != params['map_size']:
-            self.update_grid_size(params['map_size'])
+        shape = params.get("shape", "square")
+        shape_params = params.get("shape_params", {})
+
+        # =========================
+        # SHAPE CONFIG
+        # =========================
+        if shape == "round":
+            radius = int(shape_params.get("radius", params["map_size"] // 2))
+            dia = radius * 2
+            if self.shape != (dia, dia):
+                self.update_grid_size(dia)
+
+            cx = cy = radius
+            dist = np.sqrt((self.X - cx) ** 2 + (self.Y - cy) ** 2)
+            self.mask = dist <= radius
+
+        else:
+            if self.shape[0] != params["map_size"]:
+                self.update_grid_size(params["map_size"])
+            self.mask[:] = True
         
         self.detail_scale = params['detail_scale']
-        
         vnoise = np.vectorize(pnoise2)
-
+        # =========================
+        # BASE MAP
+        # =========================
         if params['use_base_map']:
             self.Z_base_map = vnoise(
                 self.X * params['base_scale'], 
@@ -77,4 +120,10 @@ class TerrainModel:
             self.Z_base = (noise_detail + 1) / 2.0
 
         self.Z_base = np.clip(self.Z_base, 0.0, params['clip_max'])
+
+        # =========================
+        # APPLY MASK (ROUND)
+        # =========================
+        self.Z_base[~self.mask] = 0.0
+
         print(f"[Model] Gerado em: {time.time() - start_total:.4f}s")

@@ -23,6 +23,16 @@ class VisPyCanvas(scene.SceneCanvas):
         self.mesh = visuals.Mesh(parent=self.view.scene, shading="flat")
         self.update_visualization(150)
 
+    def update_camera(self):
+        R, C = self.model.shape
+        cx, cy = C / 2, R / 2
+        radius = min(R, C) / 2
+
+        self.view.camera.set_range(
+            x=[cx - radius, cx + radius],
+            y=[cy - radius, cy + radius],
+            z=[-50, 50]
+        )
     def update_visualization(self, amplitude):
         start = time.time()
         z_raw = self.model.Z_base.ravel()

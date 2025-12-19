@@ -1,5 +1,5 @@
 import numpy as np
-from noise import pnoise2 
+from noise import pnoise2, pnoise3
 import time
 from config import DEFAULT_GRID_SIZE
 
@@ -85,41 +85,113 @@ class TerrainModel:
             cx = cy = radius
             dist = np.sqrt((self.X - cx) ** 2 + (self.Y - cy) ** 2)
             self.mask = dist <= radius
+            
+            # GERAÇÃO 2D (DUPLICADA PRA RESTAURAR FUNCIONAMENTO ANTIGO)
+            self.detail_scale = params['detail_scale']
+            vnoise = np.vectorize(pnoise2)
+            if params['use_base_map']:
+                self.Z_base_map = vnoise(
+                    self.X * params['base_scale'], 
+                    self.Y * params['base_scale'], 
+                    octaves=params['octaves_base'], 
+                    base=params['seed'] + params['seed_adder']
+                )
+                z_min, z_max = self.Z_base_map.min(), self.Z_base_map.max()
+                if z_max > z_min:
+                    self.Z_base_map = (self.Z_base_map - z_min) / (z_max - z_min)
 
-        else:
+            noise_detail = vnoise(
+                self.X * self.detail_scale, 
+                self.Y * self.detail_scale, 
+                octaves=params['octaves'], 
+                base=params['seed']
+            )
+
+            if params['use_base_map']:
+                self.Z_base = self.Z_base_map + (noise_detail * params['amplitude_factor'])
+            else:
+                self.Z_base = (noise_detail + 1) / 2.0
+
+            self.Z_base = np.clip(self.Z_base, 0.0, params['clip_max'])
+            
+        elif shape == "sphere":
+            self.detail_scale = params['detail_scale']  # Mantém
+            
+            height = shape_params.get("height", params["map_size"])
+            width = height * 2
+            if self.shape != (height, width):  # Altura x Largura (linhas x colunas)
+                self.update_grid_size(width)  # Cria quadrado temporário
+                self.shape = (height, width)
+                self.X, self.Y = np.meshgrid(np.arange(width), np.arange(height))
+                self.X_flat = self.X.ravel()
+                self.Y_flat = self.Y.ravel()
+                self.Z_base = np.zeros(self.shape)
+                self.mask = np.ones(self.shape, dtype=bool)  # Recria mask
+
+            # GERAÇÃO 2D COM REPEAT PRA SEAMLESS
+            # Repete horizontal (left-right) e vertical (top-bottom) baseado na scale
+            repeat_x = width  # Período em pixels (ajuste se quiser mais/menos repetições)
+            repeat_y = height
+            
+            vnoise = np.vectorize(lambda x, y: pnoise2(x, y, octaves=params['octaves'], base=params['seed'], repeatx=repeat_x, repeaty=repeat_y))
+            
+            if params['use_base_map']:
+                vnoise_base = np.vectorize(lambda x, y: pnoise2(x, y, octaves=params['octaves_base'], base=params['seed'] + params['seed_adder'], repeatx=repeat_x, repeaty=repeat_y))
+                self.Z_base_map = vnoise_base(
+                    self.X * params['base_scale'], 
+                    self.Y * params['base_scale']
+                )
+                z_min, z_max = self.Z_base_map.min(), self.Z_base_map.max()
+                if z_max > z_min:
+                    self.Z_base_map = (self.Z_base_map - z_min) / (z_max - z_min)
+
+            noise_detail = vnoise(
+                self.X * self.detail_scale, 
+                self.Y * self.detail_scale
+            )
+
+            if params['use_base_map']:
+                self.Z_base = self.Z_base_map + (noise_detail * params['amplitude_factor'])
+            else:
+                self.Z_base = (noise_detail + 1) / 2.0
+
+            self.Z_base = np.clip(self.Z_base, 0.0, params['clip_max'])
+            self.mask[:] = True  # Full pra sphere
+        
+        else:  # square
             if self.shape[0] != params["map_size"]:
                 self.update_grid_size(params["map_size"])
             self.mask[:] = True
         
-        self.detail_scale = params['detail_scale']
-        vnoise = np.vectorize(pnoise2)
-        # =========================
-        # BASE MAP
-        # =========================
-        if params['use_base_map']:
-            self.Z_base_map = vnoise(
-                self.X * params['base_scale'], 
-                self.Y * params['base_scale'], 
-                octaves=params['octaves_base'], 
-                base=params['seed'] + params['seed_adder']
+            self.detail_scale = params['detail_scale']
+            vnoise = np.vectorize(pnoise2)
+            # =========================
+            # BASE MAP
+            # =========================
+            if params['use_base_map']:
+                self.Z_base_map = vnoise(
+                    self.X * params['base_scale'], 
+                    self.Y * params['base_scale'], 
+                    octaves=params['octaves_base'], 
+                    base=params['seed'] + params['seed_adder']
+                )
+                z_min, z_max = self.Z_base_map.min(), self.Z_base_map.max()
+                if z_max > z_min:
+                    self.Z_base_map = (self.Z_base_map - z_min) / (z_max - z_min)
+
+            noise_detail = vnoise(
+                self.X * self.detail_scale, 
+                self.Y * self.detail_scale, 
+                octaves=params['octaves'], 
+                base=params['seed']
             )
-            z_min, z_max = self.Z_base_map.min(), self.Z_base_map.max()
-            if z_max > z_min:
-                self.Z_base_map = (self.Z_base_map - z_min) / (z_max - z_min)
 
-        noise_detail = vnoise(
-            self.X * self.detail_scale, 
-            self.Y * self.detail_scale, 
-            octaves=params['octaves'], 
-            base=params['seed']
-        )
+            if params['use_base_map']:
+                self.Z_base = self.Z_base_map + (noise_detail * params['amplitude_factor'])
+            else:
+                self.Z_base = (noise_detail + 1) / 2.0
 
-        if params['use_base_map']:
-            self.Z_base = self.Z_base_map + (noise_detail * params['amplitude_factor'])
-        else:
-            self.Z_base = (noise_detail + 1) / 2.0
-
-        self.Z_base = np.clip(self.Z_base, 0.0, params['clip_max'])
+            self.Z_base = np.clip(self.Z_base, 0.0, params['clip_max'])
 
         # =========================
         # APPLY MASK (ROUND)

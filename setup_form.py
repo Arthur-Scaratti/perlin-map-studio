@@ -92,10 +92,11 @@ class SetupForm(QWidget):
         self.grp_sphere = QGroupBox("Sphere Config")
         form_sphere = QFormLayout()
 
-        self.spin_sphere_width = QSpinBox()
-        self.spin_sphere_width.setRange(50, 4000)
-        self.spin_sphere_width.setValue(500)
-        form_sphere.addRow("Width:", self.spin_sphere_width)
+        self.spin_sphere_height = QSpinBox()
+        self.spin_sphere_height.setRange(50, 4000)
+        self.spin_sphere_height.setSingleStep(10)
+        self.spin_sphere_height.setValue(500)
+        form_sphere.addRow("Height:", self.spin_sphere_height)
 
         self.grp_sphere.setLayout(form_sphere)
         self.grp_sphere.setVisible(False)
@@ -195,9 +196,9 @@ class SetupForm(QWidget):
         else:
             shape = "sphere"
             shape_params = {
-                "width": self.spin_sphere_width.value()
+                "height": self.spin_sphere_height.value()
             }
-
+    
         data = {
             "seed": self.spin_seed.value(),
             "map_size": self.spin_size.value(),

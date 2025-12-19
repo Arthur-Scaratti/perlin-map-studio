@@ -43,9 +43,9 @@ class VisPyCanvas(scene.SceneCanvas):
         colors[:, 3] = 1.0 # Alpha
     
         # Máscaras booleanas (Vetorização)
-        sea_mask = z_raw < 0.3
-        sand_mask = (z_raw >= 0.3) & (z_raw < 0.35)
-        snow_mask = z_raw > 0.8
+        sea_mask = z_raw < 0.5
+        sand_mask = (z_raw >= 0.5) & (z_raw < 0.55)
+        snow_mask = z_raw > 0.9
         grass_mask = ~(sea_mask | sand_mask | snow_mask)
 
         # Aplicação de cores em bloco

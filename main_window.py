@@ -1,176 +1,84 @@
 from PyQt6.QtWidgets import (
     QMainWindow, QVBoxLayout, QSlider, QLabel, QFileDialog,
-    QMessageBox, QPushButton, QMenuBar, QDockWidget, QWidget,
-    QTabWidget, QColorDialog, QHBoxLayout, QToolButton,
-    QDoubleSpinBox
+    QMessageBox, QPushButton, QDockWidget, QWidget,
+    QTabWidget
 )
-from PyQt6.QtGui import QColor, QIcon, QPixmap
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QAction, QKeySequence
+from project_manager import ProjectManager
+from PyQt6.QtCore import Qt
 
 from exporter import HeightmapExporter
 from terrain_model import TerrainModel
 from vispy_canvas import VisPyCanvas
 from setup_form import SetupForm
+from color_setup import ColorEditorWidget
+
+import os
+import numpy as np
+
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+SAVED_MAPS_DIR = os.path.join(PROJECT_ROOT, "saved_maps")
+EXPORTED_HEIGHTMAPS_DIR = os.path.join(PROJECT_ROOT, "exported_heightmaps")
+PRESETS_DIR = os.path.join(PROJECT_ROOT, "presets")
+
+os.makedirs(SAVED_MAPS_DIR, exist_ok=True)
+os.makedirs(EXPORTED_HEIGHTMAPS_DIR, exist_ok=True)
+os.makedirs(PRESETS_DIR, exist_ok=True)
 
 
-class ColorEditorWidget(QWidget):
-    def __init__(self, main_window, vispy_widget):
-        super().__init__()
-        self.main_window = main_window  # Referência direta ao MainWindow
-        self.vispy_widget = vispy_widget
-        self.colors = vispy_widget.biome_configs.copy()
-
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel("<b>Editor de Cores</b>"))
-
-        self.color_list = QWidget()
-        self.color_layout = QVBoxLayout()
-        self.color_layout.setSpacing(2)
-        self.color_list.setLayout(self.color_layout)
-        layout.addWidget(self.color_list)
-
-        add_btn = QPushButton("+ Adicionar Cor")
-        add_btn.clicked.connect(self.add_color)
-        layout.addWidget(add_btn)
-
-        apply_btn = QPushButton("Aplicar e Atualizar Visualização")
-        apply_btn.setStyleSheet("font-weight: bold; padding: 10px;")
-        apply_btn.clicked.connect(self.apply_to_vispy)
-        layout.addWidget(apply_btn)
-
-        layout.addStretch()
-        self.setLayout(layout)
-
-        self.refresh_list()
-
-    def get_sorted_colors(self):
-        return sorted(self.colors, key=lambda b: b['min'])
-
-    def refresh_list(self):
-        # Limpa tudo
-        while self.color_layout.count():
-            item = self.color_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-
-        sorted_colors = self.get_sorted_colors()
-        for i, biome in enumerate(sorted_colors):
-            row = QHBoxLayout()
-            row.setSpacing(5)
-
-            # Preview cor
-            color_btn = QToolButton()
-            color_btn.setFixedSize(30, 30)
-            pixmap = QPixmap(30, 30)
-            pixmap.fill(QColor.fromRgbF(*biome['color']))
-            color_btn.setIcon(QIcon(pixmap))
-            color_btn.setIconSize(QSize(30, 30))
-            color_btn.clicked.connect(lambda _, idx=i: self.edit_color(idx))
-            row.addWidget(color_btn)
-
-            # Spins min/max
-            min_spin = QDoubleSpinBox()
-            min_spin.setRange(0.0, 10.0)
-            min_spin.setDecimals(3)
-            min_spin.setSingleStep(0.01)
-            min_spin.setValue(biome['min'])
-            min_spin.valueChanged.connect(lambda v, idx=i: self.update_min(idx, v))
-
-            max_spin = QDoubleSpinBox()
-            max_spin.setRange(0.0, 10.0)
-            max_spin.setDecimals(3)
-            max_spin.setSingleStep(0.01)
-            max_spin.setValue(biome['max'])
-            max_spin.valueChanged.connect(lambda v, idx=i: self.update_max(idx, v))
-
-            row.addWidget(QLabel("De:"))
-            row.addWidget(min_spin)
-            row.addWidget(QLabel("Até:"))
-            row.addWidget(max_spin)
-
-            # Remover
-            rem_btn = QToolButton()
-            rem_btn.setText("✖")
-            rem_btn.clicked.connect(lambda _, idx=i: self.remove_biome(idx))
-            row.addWidget(rem_btn)
-
-            row.addStretch()
-
-            # Container simples sem stylesheet problemático
-            container = QWidget()
-            container.setLayout(row)
-            container.setStyleSheet("""
-                QWidget {
-                    border: 1px solid gray;
-                    border-radius: 2px;
-                    padding: 4px;
-                    background-color: #2f2f2f;
-                }
-            """)
-            self.color_layout.addWidget(container)
-
-    def add_color(self):
-        sorted_colors = self.get_sorted_colors()
-        new_min = sorted_colors[-1]['max'] if sorted_colors else 0.0
-        new_max = max(new_min + 0.1, 1.5)
-        new_color = [1.0, 1.0, 1.0, 1.0]
-        self.colors.append({'min': new_min, 'max': new_max, 'color': new_color})
-        self.refresh_list()
-
-    def remove_biome(self, index):
-        sorted_colors = self.get_sorted_colors()
-        biome_to_remove = sorted_colors[index]
-        self.colors.remove(biome_to_remove)
-        self.refresh_list()
-
-    def edit_color(self, index):
-        sorted_colors = self.get_sorted_colors()
-        biome = sorted_colors[index]
-        qcolor = QColor.fromRgbF(*biome['color'])
-        dialog = QColorDialog(qcolor, self)
-        if dialog.exec():
-            new_color = dialog.currentColor()
-            biome['color'] = [new_color.redF(), new_color.greenF(), new_color.blueF(), new_color.alphaF()]
-            self.refresh_list()
-
-    def update_min(self, index, value):
-        sorted_colors = self.get_sorted_colors()
-        biome = sorted_colors[index]
-        if index > 0 and value < sorted_colors[index-1]['max']:
-            value = sorted_colors[index-1]['max']
-        biome['min'] = value
-        self.refresh_list()
-
-    def update_max(self, index, value):
-        sorted_colors = self.get_sorted_colors()
-        biome = sorted_colors[index]
-        if index + 1 < len(sorted_colors) and value > sorted_colors[index+1]['min']:
-            value = sorted_colors[index+1]['min']
-        biome['max'] = value
-        self.refresh_list()
-
-    def apply_to_vispy(self):
-        self.vispy_widget.biome_configs = self.get_sorted_colors()
-        self.vispy_widget.update_visualization(self.main_window.pending_amplitude)  # Acesso direto!
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Terrain Studio - Perlin Noise 3D")
+
+        self.setWindowTitle("Perlin Map Studio")
         self.setGeometry(100, 100, 1400, 900)
+        
+        self.current_project_path = None
+        self.last_params = {} # Armazena os últimos parâmetros de geração
 
+        # --- Setup do Modelo e UI ---
+        self.model = TerrainModel()
+        self.setup_ui()
+        
+        # --- Lógica de Auto-load ---
+        last_path = ProjectManager.get_last_project_path()
+        if last_path:
+            self.load_project_file(last_path)
+        else:
+            self.setup_form.collect_and_emit()
+
+    def setup_ui(self):
+        # Menu Arquivo
         menu_bar = self.menuBar()
-        file_menu = menu_bar.addMenu("Arquivo")
-        #edit_menu = menu_bar.addMenu("Editar")
-        #tools_menu = menu_bar.addMenu("Ferramentas")
+        file_menu = menu_bar.addMenu("&Arquivo")
 
-        # Central
+        new_action = QAction("Novo Projeto", self)
+        new_action.setShortcut(QKeySequence.StandardKey.New)
+        new_action.triggered.connect(self.new_project_action)
+        file_menu.addAction(new_action)
+
+        load_action = QAction("Abrir Projeto...", self)
+        load_action.setShortcut(QKeySequence.StandardKey.Open)
+        load_action.triggered.connect(self.load_project_action)
+        file_menu.addAction(load_action)
+
+        save_action = QAction("Salvar Projeto", self)
+        save_action.setShortcut(QKeySequence.StandardKey.Save)
+        save_action.triggered.connect(self.save_project_action)
+        file_menu.addAction(save_action)
+
+        save_as_action = QAction("Salvar Como...", self)
+        save_as_action.triggered.connect(lambda: self.save_project_action(force_dialog=True))
+        file_menu.addAction(save_as_action)
+
+        # Central Widget com Tabs
         tab_widget = QTabWidget()
         vispy_container = QWidget()
         vispy_layout = QVBoxLayout()
 
-        self.model = TerrainModel()
         self.vispy_widget = VisPyCanvas(self.model)
         vispy_layout.addWidget(self.vispy_widget.native)
 
@@ -180,7 +88,7 @@ class MainWindow(QMainWindow):
 
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.setMinimum(1)
-        self.slider.setMaximum(150)
+        self.slider.setMaximum(250) # Aumentado para mais range
         self.slider.setValue(150)
         self.slider.valueChanged.connect(self.on_amplitude_change)
         vispy_layout.addWidget(self.slider)
@@ -194,38 +102,96 @@ class MainWindow(QMainWindow):
         tab_widget.addTab(vispy_container, "Mapa Principal")
         self.setCentralWidget(tab_widget)
 
-        # Dock com abas internas
+        # Docks
         self.config_dock = QDockWidget("Configurações", self)
-        self.config_dock.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable |
-                                     QDockWidget.DockWidgetFeature.DockWidgetFloatable |
-                                     QDockWidget.DockWidgetFeature.DockWidgetClosable)
-
         config_tabs = QTabWidget()
-
         self.setup_form = SetupForm(on_generate_callback=self.on_generate_request)
         config_tabs.addTab(self.setup_form, "Geração")
-
-        # Passa self (MainWindow) e o vispy_widget
         self.biome_editor = ColorEditorWidget(self, self.vispy_widget)
         config_tabs.addTab(self.biome_editor, "Cores")
-
         self.config_dock.setWidget(config_tabs)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.config_dock)
-        self.config_dock.setMinimumWidth(380)
 
-        self.setup_form.collect_and_emit()
+    # --- LÓGICA DE PROJETO ---
 
-    def on_generate_request(self, params):
-        old_shape = self.model.shape
-        self.model.configure_and_generate(params)
+    def new_project_action(self):
+        ret = QMessageBox.question(self, "Novo Projeto", "Deseja mover para novo Projeto?", 
+                                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if ret == QMessageBox.StandardButton.Yes:
+            self.current_project_path = None
+            self.setup_form.apply_data({}) # Reseta campos
+            self.setup_form.collect_and_emit()
+            self.setWindowTitle("Terrain Studio - Novo Projeto")
 
-        new_shape = self.model.shape
-        if old_shape != new_shape:
+    def save_project_action(self, force_dialog=False):
+        if not self.current_project_path or force_dialog:
+            path, _ = QFileDialog.getSaveFileName(self, "Salvar Projeto", "", "Terrain Project (*.tproj)")
+            if not path: return
+            self.current_project_path = path
+
+        # Reunindo os dados necessários para reconstruir o estado
+        data = {
+            "z_base": self.model.Z_base,
+            "mask": self.model.mask,
+            "shape": self.model.shape,
+            "params": self.last_params,
+            "biomes": self.vispy_widget.biome_configs,
+            "amplitude": self.pending_amplitude
+        }
+        
+        if ProjectManager.save_project(self.current_project_path, data):
+            self.statusBar().showMessage(f"Projeto salvo: {self.current_project_path}", 3000)
+            self.setWindowTitle(f"Terrain Studio - {os.path.basename(self.current_project_path)}")
+
+    def load_project_action(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Abrir Projeto", "", "Terrain Project (*.tproj)")
+        if path:
+            self.load_project_file(path)
+
+    def load_project_file(self, path):
+        data = ProjectManager.load_project(path)
+        if data:
+            self.current_project_path = path
+            
+           
+            self.model.shape = data['shape']
+            self.model.Z_base = data['z_base']
+            self.model.mask = data['mask']
+           
+            self.model.X, self.model.Y = np.meshgrid(np.arange(data['shape'][1]), np.arange(data['shape'][0]))
+            self.model.X_flat = self.model.X.ravel()
+            self.model.Y_flat = self.model.Y.ravel()
+
+            
+            self.last_params = data['params']
+            self.setup_form.apply_data(data['params'])
+
+            
+            self.vispy_widget.biome_configs = data['biomes']
+            self.biome_editor.colors = data['biomes'].copy()
+            self.biome_editor.refresh_list()
+
+           
+            self.pending_amplitude = data.get('amplitude', 150.0)
+            self.slider.setValue(int(self.pending_amplitude))
+            
+            
             self.vispy_widget.faces = self.model.get_mesh_faces()
             self.vispy_widget.update_camera()
+            self.vispy_widget.update_visualization(self.pending_amplitude)
+            
+            self.setWindowTitle(f"Terrain Studio - {os.path.basename(path)}")
+            self.statusBar().showMessage(f"Projeto carregado: {path}", 3000)
 
-        self.vispy_widget.update_visualization(self.pending_amplitude)
+
+    def on_generate_request(self, params):
         self.last_params = params
+        old_shape = self.model.shape
+        self.model.configure_and_generate(params)
+        if old_shape != self.model.shape:
+            self.vispy_widget.faces = self.model.get_mesh_faces()
+            self.vispy_widget.update_camera()
+        self.vispy_widget.update_visualization(self.pending_amplitude)
 
     def on_amplitude_change(self, value):
         self.pending_amplitude = float(value)

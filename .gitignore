@@ -1,3 +1,7 @@
 __pycache__/
 *.pyc
 *.pyo
+*.last_project_path
+/saved_maps/
+/exported_heightmaps/
+/presets/

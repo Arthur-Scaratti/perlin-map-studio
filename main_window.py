@@ -168,9 +168,14 @@ class MainWindow(QMainWindow):
 
             
             self.vispy_widget.biome_configs = data['biomes']
-            self.biome_editor.colors = data['biomes'].copy()
+            converted_colors = []
+            for b in data['biomes']:
+                # Compatibilidade com versões antigas
+                start_val = b.get('start', b.get('min', 0.0))
+                converted_colors.append({'start': start_val, 'color': b['color']})
+        
+            self.biome_editor.colors = converted_colors
             self.biome_editor.refresh_list()
-
            
             self.pending_amplitude = data.get('amplitude', 150.0)
             self.slider.setValue(int(self.pending_amplitude))

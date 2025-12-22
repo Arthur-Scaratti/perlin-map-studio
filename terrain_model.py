@@ -1,12 +1,12 @@
 import numpy as np
-from noise import pnoise2, pnoise3
+from noise import pnoise2
 import time
 from config import DEFAULT_GRID_SIZE
 
 class TerrainModel:
     def __init__(self):
         self.shape = (DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE)
-        self.detail_scale = 0.01 
+        self.upper_scale = 0.01 
         
         self.Z_base = None
         self.Z_base_map = None
@@ -33,7 +33,6 @@ class TerrainModel:
         R, C = self.shape
         indices = np.arange(R * C).reshape(R, C)
 
-        # vértices base (igual ao original)
         v1 = indices[:-1, :-1].ravel()
         v2 = indices[:-1, 1:].ravel()
         v3 = indices[1:, :-1].ravel()
@@ -41,9 +40,11 @@ class TerrainModel:
 
         f1 = np.column_stack((v1, v2, v3))
         f2 = np.column_stack((v4, v3, v2))
-    # =========================
-    # MÁSCARAS DE FACE (vetorizadas) NOVO
-    # =========================
+        
+        # =========================
+        # MÁSCARAS DE FACE (vetorizadas)
+        # =========================
+
         m = self.mask
 
         mask_f1 = (
@@ -76,8 +77,9 @@ class TerrainModel:
         # =========================
         # SHAPE CONFIG
         # =========================
+
         if shape == "round":
-            radius = int(shape_params.get("radius", params["map_size"] // 2))
+            radius = int(shape_params.get("radius", 500))
             dia = radius * 2
             if self.shape != (dia, dia):
                 self.update_grid_size(dia)
@@ -86,25 +88,29 @@ class TerrainModel:
             dist = np.sqrt((self.X - cx) ** 2 + (self.Y - cy) ** 2)
             self.mask = dist <= radius
             
-            # GERAÇÃO 2D (DUPLICADA PRA RESTAURAR FUNCIONAMENTO ANTIGO)
-            self.detail_scale = params['detail_scale']
+    
+            self.upper_scale = params['upper_scale']
             vnoise = np.vectorize(pnoise2)
             if params['use_base_map']:
                 self.Z_base_map = vnoise(
                     self.X * params['base_scale'], 
                     self.Y * params['base_scale'], 
                     octaves=params['octaves_base'], 
-                    base=params['seed'] + params['seed_adder']
+                    base=params['seed'] + params['seed_adder'],
+                    lacunarity=params.get('base_lacunarity', 2.0),
+                    persistence=params.get('base_persistence', 0.5)
                 )
                 z_min, z_max = self.Z_base_map.min(), self.Z_base_map.max()
                 if z_max > z_min:
                     self.Z_base_map = (self.Z_base_map - z_min) / (z_max - z_min)
 
             noise_detail = vnoise(
-                self.X * self.detail_scale, 
-                self.Y * self.detail_scale, 
+                self.X * self.upper_scale, 
+                self.Y * self.upper_scale, 
                 octaves=params['octaves'], 
-                base=params['seed']
+                base=params['seed'],
+                lacunarity=params.get('lacunarity', 2.0),
+                persistence=params.get('persistence', 0.5)
             )
 
             if params['use_base_map']:
@@ -115,28 +121,38 @@ class TerrainModel:
             self.Z_base = np.clip(self.Z_base, 0.0, params['clip_max'])
             
         elif shape == "sphere":
-            self.detail_scale = params['detail_scale']  # Mantém
+            self.upper_scale = params['upper_scale'] 
             
-            height = shape_params.get("height", params["map_size"])
+            height = shape_params.get("height", 500)
             width = height * 2
-            if self.shape != (height, width):  # Altura x Largura (linhas x colunas)
-                self.update_grid_size(width)  # Cria quadrado temporário
+
+            if self.shape != (height, width): 
+                self.update_grid_size(width)  # temporário
                 self.shape = (height, width)
                 self.X, self.Y = np.meshgrid(np.arange(width), np.arange(height))
                 self.X_flat = self.X.ravel()
                 self.Y_flat = self.Y.ravel()
                 self.Z_base = np.zeros(self.shape)
-                self.mask = np.ones(self.shape, dtype=bool)  # Recria mask
+                self.mask = np.ones(self.shape, dtype=bool) 
 
-            # GERAÇÃO 2D COM REPEAT PRA SEAMLESS
-            # Repete horizontal (left-right) e vertical (top-bottom) baseado na scale
-            repeat_x = width  # Período em pixels (ajuste se quiser mais/menos repetições)
-            repeat_y = height
+        
+            repeat_x = width
+            repeat_y = height 
             
-            vnoise = np.vectorize(lambda x, y: pnoise2(x, y, octaves=params['octaves'], base=params['seed'], repeatx=repeat_x, repeaty=repeat_y))
+            vnoise = np.vectorize(lambda x, y: pnoise2(x, y, octaves=params['octaves'], 
+                                                       base=params['seed'], 
+                                                       repeatx=repeat_x, 
+                                                       repeaty=repeat_y,
+                                                       lacunarity=params.get('lacunarity', 2.0),
+                                                       persistence=params.get('persistence', 0.5)))
             
             if params['use_base_map']:
-                vnoise_base = np.vectorize(lambda x, y: pnoise2(x, y, octaves=params['octaves_base'], base=params['seed'] + params['seed_adder'], repeatx=repeat_x, repeaty=repeat_y))
+                vnoise_base = np.vectorize(lambda x, y: pnoise2(x, y, octaves=params['octaves_base'], 
+                                                                base=params['seed'] + params['seed_adder'], 
+                                                                repeatx=repeat_x, 
+                                                                repeaty=repeat_y,
+                                                                lacunarity=params.get('base_lacunarity', 2.0),
+                                                                persistence=params.get('base_persistence', 0.5)))
                 self.Z_base_map = vnoise_base(
                     self.X * params['base_scale'], 
                     self.Y * params['base_scale']
@@ -146,8 +162,8 @@ class TerrainModel:
                     self.Z_base_map = (self.Z_base_map - z_min) / (z_max - z_min)
 
             noise_detail = vnoise(
-                self.X * self.detail_scale, 
-                self.Y * self.detail_scale
+                self.X * self.upper_scale, 
+                self.Y * self.upper_scale
             )
 
             if params['use_base_map']:
@@ -159,11 +175,11 @@ class TerrainModel:
             self.mask[:] = True  # Full pra sphere
         
         else:  # square
-            if self.shape[0] != params["map_size"]:
-                self.update_grid_size(params["map_size"])
+            if self.shape[0] != shape_params.get("side", 500):
+                self.update_grid_size(shape_params.get("side", 500))
             self.mask[:] = True
         
-            self.detail_scale = params['detail_scale']
+            self.upper_scale = params['upper_scale']
             vnoise = np.vectorize(pnoise2)
             # =========================
             # BASE MAP
@@ -173,17 +189,21 @@ class TerrainModel:
                     self.X * params['base_scale'], 
                     self.Y * params['base_scale'], 
                     octaves=params['octaves_base'], 
-                    base=params['seed'] + params['seed_adder']
+                    base=params['seed'] + params['seed_adder'],
+                    lacunarity=params.get('base_lacunarity', 2.0),
+                    persistence=params.get('base_persistence', 0.5)
                 )
                 z_min, z_max = self.Z_base_map.min(), self.Z_base_map.max()
                 if z_max > z_min:
                     self.Z_base_map = (self.Z_base_map - z_min) / (z_max - z_min)
 
             noise_detail = vnoise(
-                self.X * self.detail_scale, 
-                self.Y * self.detail_scale, 
+                self.X * self.upper_scale, 
+                self.Y * self.upper_scale, 
                 octaves=params['octaves'], 
-                base=params['seed']
+                base=params['seed'],
+                lacunarity=params.get('lacunarity', 2.0),
+                persistence=params.get('persistence', 0.5)
             )
 
             if params['use_base_map']:

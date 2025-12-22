@@ -22,22 +22,12 @@ class SetupForm(QWidget):
         self.spin_seed.setRange(0, 999999)
         self.spin_seed.setValue(242)
         form_gen.addRow("Global Seed:", self.spin_seed)
-        
-        self.spin_size = QSpinBox()
-        self.spin_size.setRange(50, 2000)
-        self.spin_size.setSingleStep(50)
-        self.spin_size.setValue(500) 
-        form_gen.addRow("Map Size (px):", self.spin_size)
-        
-        self.spin_octaves = QSpinBox()
-        self.spin_octaves.setRange(2, 16)
-        self.spin_octaves.setValue(6)
-        form_gen.addRow("Octaves (Detalhe):", self.spin_octaves)
+
         
         grp_gen.setLayout(form_gen)
         layout.addWidget(grp_gen)
 
-         # =========================
+        # =========================
         # Shape Selection
         # =========================
         grp_shape = QGroupBox("Shape")
@@ -49,7 +39,7 @@ class SetupForm(QWidget):
 
         self.rb_square = QRadioButton("Square")
         self.rb_round = QRadioButton("Round Flat")
-        self.rb_sphere = QRadioButton("Spherical")
+        self.rb_sphere = QRadioButton("Equirectangular")
 
         self.rb_square.setChecked(True)
 
@@ -116,45 +106,88 @@ class SetupForm(QWidget):
         self.grp_base.setCheckable(True)
         self.grp_base.setChecked(True)
         form_base = QFormLayout()
-        
+         
+        self.spin_seed_adder = QSpinBox()
+        self.spin_seed_adder.setRange(0, 1000)
+        self.spin_seed_adder.setValue(100)
+        form_base.addRow("Base Seed Inc. :", self.spin_seed_adder)
+
         self.spin_base_scale = QDoubleSpinBox()
         self.spin_base_scale.setRange(0.001, 0.01)
         self.spin_base_scale.setDecimals(4)
         self.spin_base_scale.setSingleStep(0.0005)
         self.spin_base_scale.setValue(0.005)
         form_base.addRow("Base Scale:", self.spin_base_scale)
+
+        self.spin_base_octaves = QSpinBox()
+        self.spin_base_octaves.setRange(2, 8)
+        self.spin_base_octaves.setValue(4)
+        form_base.addRow("Base Octaves:", self.spin_base_octaves)
+
+        self.spin_base_persistence = QDoubleSpinBox()
+        self.spin_base_persistence.setRange(0.1, 1.0)
+        self.spin_base_persistence.setSingleStep(0.1)
+        self.spin_base_persistence.setValue(0.5)
+        form_base.addRow("Base Persistence:", self.spin_base_persistence)
+
+        self.spin_base_lacunarity = QDoubleSpinBox()
+        self.spin_base_lacunarity.setRange(1.0, 4.0)
+        self.spin_base_lacunarity.setSingleStep(0.1)
+        self.spin_base_lacunarity.setValue(2.0)
+        form_base.addRow("Base Lacunarity:", self.spin_base_lacunarity)
         
-        self.spin_detail_scale = QDoubleSpinBox()
-        self.spin_detail_scale.setRange(0.001, 0.1)
-        self.spin_detail_scale.setDecimals(4)
-        self.spin_detail_scale.setSingleStep(0.001)
-        self.spin_detail_scale.setValue(0.01)
-        form_base.addRow("Detail Scale:", self.spin_detail_scale)
+        self.grp_base.setLayout(form_base)
+        layout.addWidget(self.grp_base)
         
-        self.spin_seed_adder = QSpinBox()
-        self.spin_seed_adder.setRange(1, 1000)
-        self.spin_seed_adder.setValue(100)
-        form_base.addRow("Seed Adder:", self.spin_seed_adder)
+        # =========================
+        # Upper Height Map
+        # =========================
+
+        self.grp_upper = QGroupBox("Upper Height Map")
+        form_upper = QFormLayout()
         
         self.spin_amplitude_factor = QDoubleSpinBox()
         self.spin_amplitude_factor.setRange(0.1, 1.0)
         self.spin_amplitude_factor.setSingleStep(0.1)
         self.spin_amplitude_factor.setValue(0.7)
-        form_base.addRow("Detalhe Amp. Factor:", self.spin_amplitude_factor)
+        form_upper.addRow("Upper Amp. Factor:", self.spin_amplitude_factor)
         
         self.spin_clip = QDoubleSpinBox()
         self.spin_clip.setRange(1.0, 1.5)
         self.spin_clip.setSingleStep(0.1)
         self.spin_clip.setValue(1.5)
-        form_base.addRow("Clip Max Height:", self.spin_clip)
+        form_upper.addRow("Clip Max Height:", self.spin_clip)
         
-        self.spin_base_octaves = QSpinBox()
-        self.spin_base_octaves.setRange(2, 8)
-        self.spin_base_octaves.setValue(4)
-        form_base.addRow("Base Octaves:", self.spin_base_octaves)
-        
-        self.grp_base.setLayout(form_base)
-        layout.addWidget(self.grp_base)
+        self.spin_upper_scale = QDoubleSpinBox()
+        self.spin_upper_scale.setRange(0.001, 0.1)
+        self.spin_upper_scale.setDecimals(4)
+        self.spin_upper_scale.setSingleStep(0.001)
+        self.spin_upper_scale.setValue(0.01)
+        form_upper.addRow("Upper Scale:", self.spin_upper_scale)
+
+        self.spin_octaves = QSpinBox()
+        self.spin_octaves.setRange(2, 16)
+        self.spin_octaves.setValue(6)
+        form_upper.addRow("Upper Octaves:", self.spin_octaves)
+
+        self.spin_persistence = QDoubleSpinBox()
+        self.spin_persistence.setRange(0.1, 1.0)
+        self.spin_persistence.setSingleStep(0.1)
+        self.spin_persistence.setValue(0.5)
+        form_upper.addRow("Upper Persistence:", self.spin_persistence)
+
+        self.spin_lacunarity = QDoubleSpinBox()
+        self.spin_lacunarity.setRange(1.0, 4.0)
+        self.spin_lacunarity.setSingleStep(0.1)
+        self.spin_lacunarity.setValue(2.0)
+        form_upper.addRow("Upper Lacunarity:", self.spin_lacunarity)
+
+        self.grp_upper.setLayout(form_upper)
+        layout.addWidget(self.grp_upper)
+
+        # =========================
+        # Buttons
+        # =========================
         
         btn_layout = QVBoxLayout()
         
@@ -201,7 +234,6 @@ class SetupForm(QWidget):
     
         data = {
             "seed": self.spin_seed.value(),
-            "map_size": self.spin_size.value(),
             "octaves": self.spin_octaves.value(),
 
             "shape": shape,
@@ -209,11 +241,15 @@ class SetupForm(QWidget):
 
             "use_base_map": self.grp_base.isChecked(),
             "base_scale": self.spin_base_scale.value(),
-            "detail_scale": self.spin_detail_scale.value(),
+            "upper_scale": self.spin_upper_scale.value(),
             "seed_adder": self.spin_seed_adder.value(),
             "amplitude_factor": self.spin_amplitude_factor.value(),
             "clip_max": self.spin_clip.value(),
-            "octaves_base": self.spin_base_octaves.value()
+            "octaves_base": self.spin_base_octaves.value(),
+            "persistence": self.spin_persistence.value(),
+            "lacunarity": self.spin_lacunarity.value(),
+            "base_persistence": self.spin_base_persistence.value(),
+            "base_lacunarity": self.spin_base_lacunarity.value()
         }
         return data
 
@@ -245,12 +281,18 @@ class SetupForm(QWidget):
 
     def apply_data(self, data):
         self.spin_seed.setValue(data.get("seed", 242))
-        self.spin_size.setValue(data.get("map_size", 200))
         self.spin_octaves.setValue(data.get("octaves", 6))
         self.grp_base.setChecked(data.get("use_base_map", True))
         
         self.spin_base_scale.setValue(data.get("base_scale", 0.005))
-        self.spin_detail_scale.setValue(data.get("detail_scale", 0.01))
+        ####
+        self.spin_persistence.setValue(data.get("persistence", 0.5))
+        self.spin_lacunarity.setValue(data.get("lacunarity", 2.0))
+
+        self.spin_base_persistence.setValue(data.get("base_persistence", 0.5))
+        self.spin_base_lacunarity.setValue(data.get("base_lacunarity", 2))
+        ####
+        self.spin_upper_scale.setValue(data.get("upper_scale", 0.01))
         self.spin_seed_adder.setValue(data.get("seed_adder", 100))
         self.spin_amplitude_factor.setValue(data.get("amplitude_factor", 0.7))
         self.spin_clip.setValue(data.get("clip_max", 1.5))

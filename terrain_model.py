@@ -2,6 +2,7 @@ import numpy as np
 from noise import pnoise2
 import time
 from config import DEFAULT_GRID_SIZE
+from mask_utils import get_continent_centers, generate_multi_point_mask
 
 class TerrainModel:
     def __init__(self):
@@ -118,6 +119,25 @@ class TerrainModel:
             else:
                 self.Z_base = (noise_detail + 1) / 2.0
 
+            # --- LÓGICA DE ISOLAMENTO DE CONTINENTES ---
+            num_continents = params.get("continents_count", 1)
+            centers = get_continent_centers(num_continents)
+
+           
+            influence_mask = generate_multi_point_mask(
+                self.shape, 
+                centers, 
+                radius=0.18,  
+                softness=0.2  
+            )       
+    
+            if params['use_base_map']:
+             
+                self.Z_base = (self.Z_base_map * influence_mask) + (noise_detail * params['amplitude_factor'] * influence_mask)
+            else:
+                self.Z_base = ((noise_detail + 1) / 2.0) * influence_mask
+
+            
             self.Z_base = np.clip(self.Z_base, 0.0, params['clip_max'])
             
         elif shape == "sphere":

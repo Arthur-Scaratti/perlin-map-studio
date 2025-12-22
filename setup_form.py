@@ -23,6 +23,10 @@ class SetupForm(QWidget):
         self.spin_seed.setValue(242)
         form_gen.addRow("Global Seed:", self.spin_seed)
 
+        self.spin_continents = QSpinBox()
+        self.spin_continents.setRange(1, 5)
+        self.spin_continents.setValue(1)
+        form_gen.addRow("Qty. Continents:", self.spin_continents)
         
         grp_gen.setLayout(form_gen)
         layout.addWidget(grp_gen)
@@ -234,6 +238,7 @@ class SetupForm(QWidget):
     
         data = {
             "seed": self.spin_seed.value(),
+            "continents_count": self.spin_continents.value(),
             "octaves": self.spin_octaves.value(),
 
             "shape": shape,
@@ -281,6 +286,7 @@ class SetupForm(QWidget):
 
     def apply_data(self, data):
         self.spin_seed.setValue(data.get("seed", 242))
+        self.spin_continents.setValue(data.get("continents_count", 1)),
         self.spin_octaves.setValue(data.get("octaves", 6))
         self.grp_base.setChecked(data.get("use_base_map", True))
         

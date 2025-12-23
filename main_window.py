@@ -83,7 +83,7 @@ class MainWindow(QMainWindow):
         vispy_layout.addWidget(self.vispy_widget.native)
 
         self.pending_amplitude = 150.0
-        self.label_altura = QLabel("Amplitude Visual (Z-Scale): 150.0")
+        self.label_altura = QLabel("Visual Range (Z-Scale): 150.0")
         vispy_layout.addWidget(self.label_altura)
 
         self.slider = QSlider(Qt.Orientation.Horizontal)
@@ -94,42 +94,42 @@ class MainWindow(QMainWindow):
         vispy_layout.addWidget(self.slider)
 
         self.exporter = HeightmapExporter()
-        export_btn = QPushButton("Exportar Heightmap (PNG 16-bit)")
+        export_btn = QPushButton("Export Heightmap (PNG 16-bit)")
         export_btn.clicked.connect(self.export_terrain)
         vispy_layout.addWidget(export_btn)
 
         vispy_container.setLayout(vispy_layout)
-        tab_widget.addTab(vispy_container, "Mapa Principal")
+        tab_widget.addTab(vispy_container, "Map View")
         self.setCentralWidget(tab_widget)
 
         # Docks
-        self.config_dock = QDockWidget("Configurações", self)
+        self.config_dock = QDockWidget("Settings", self)
         config_tabs = QTabWidget()
         self.setup_form = SetupForm(on_generate_callback=self.on_generate_request)
-        config_tabs.addTab(self.setup_form, "Geração")
+        config_tabs.addTab(self.setup_form, "Generation")
         self.biome_editor = ColorEditorWidget(self, self.vispy_widget)
-        config_tabs.addTab(self.biome_editor, "Cores")
+        config_tabs.addTab(self.biome_editor, "Colors")
         self.config_dock.setWidget(config_tabs)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.config_dock)
 
     # --- LÓGICA DE PROJETO ---
 
     def new_project_action(self):
-        ret = QMessageBox.question(self, "Novo Projeto", "Deseja mover para novo Projeto?", 
+        ret = QMessageBox.question(self, "New Project", "Want to start a new project?", 
                                  QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if ret == QMessageBox.StandardButton.Yes:
             self.current_project_path = None
             self.setup_form.apply_data({}) # Reseta campos
             self.setup_form.collect_and_emit()
-            self.setWindowTitle("Terrain Studio - Novo Projeto")
+            self.setWindowTitle("Terrain Studio - New Project")
 
     def save_project_action(self, force_dialog=False):
         if not self.current_project_path or force_dialog:
-            path, _ = QFileDialog.getSaveFileName(self, "Salvar Projeto", "", "Terrain Project (*.tproj)")
+            path, _ = QFileDialog.getSaveFileName(self, "Save Project", "", "Terrain Project (*.tproj)")
             if not path: return
             self.current_project_path = path
 
-        # Reunindo os dados necessários para reconstruir o estado
+        # Reune os dados necessários para reconstruir o estado
         data = {
             "z_base": self.model.Z_base,
             "mask": self.model.mask,
@@ -144,7 +144,7 @@ class MainWindow(QMainWindow):
             self.setWindowTitle(f"Terrain Studio - {os.path.basename(self.current_project_path)}")
 
     def load_project_action(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Abrir Projeto", "", "Terrain Project (*.tproj)")
+        path, _ = QFileDialog.getOpenFileName(self, "Open Project", "", "Terrain Project (*.tproj)")
         if path:
             self.load_project_file(path)
 
@@ -186,7 +186,7 @@ class MainWindow(QMainWindow):
             self.vispy_widget.update_visualization(self.pending_amplitude)
             
             self.setWindowTitle(f"Terrain Studio - {os.path.basename(path)}")
-            self.statusBar().showMessage(f"Projeto carregado: {path}", 3000)
+            self.statusBar().showMessage(f"Project loaded: {path}", 3000)
 
 
     def on_generate_request(self, params):
@@ -200,12 +200,12 @@ class MainWindow(QMainWindow):
 
     def on_amplitude_change(self, value):
         self.pending_amplitude = float(value)
-        self.label_altura.setText(f"Amplitude Visual (Z-Scale): {self.pending_amplitude:.1f}")
+        self.label_altura.setText(f"Visual (Z-Scale): {self.pending_amplitude:.1f}")
         self.vispy_widget.update_visualization(self.pending_amplitude)
 
     def export_terrain(self):
         Z_2D = self.model.Z_base
-        file_path, _ = QFileDialog.getSaveFileName(self, "Salvar Heightmap", "terrain_gen.png", "PNG Files (*.png)")
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save Heightmap", "terrain_gen.png", "PNG Files (*.png)")
         if file_path:
             self.exporter.export_heightmap(Z_2D, output_path=file_path)
-            QMessageBox.information(self, "Sucesso", f"Salvo em:\n{file_path}")
+            QMessageBox.information(self, "Success", f"Saved to:\n{file_path}")

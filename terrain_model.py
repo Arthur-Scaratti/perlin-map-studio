@@ -7,7 +7,7 @@ from mask_utils import get_continent_centers, generate_multi_point_mask
 class TerrainModel:
     def __init__(self):
         self.shape = (DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE)
-        self.upper_scale = 0.01 
+        self.upper_scale = 0.011 
         
         self.Z_base = None
         self.Z_base_map = None
@@ -15,7 +15,7 @@ class TerrainModel:
         self.X, self.Y = None, None
         self.X_flat, self.Y_flat = None, None
 
-        self.mask = None  # <<< NOVO
+        self.mask = None
         
         self.update_grid_size(DEFAULT_GRID_SIZE)
 
@@ -28,7 +28,7 @@ class TerrainModel:
         self.X_flat = self.X.ravel()
         self.Y_flat = self.Y.ravel()
         self.Z_base = np.zeros(self.shape)
-        self.mask = np.ones(self.shape, dtype=bool)  # <<< NOVO
+        self.mask = np.ones(self.shape, dtype=bool) 
 
     def get_mesh_faces(self):
         R, C = self.shape
@@ -72,7 +72,7 @@ class TerrainModel:
     def configure_and_generate(self, params):
         start_total = time.time()
         
-        shape = params.get("shape", "square")
+        shape = params.get("shape", "round")
         shape_params = params.get("shape_params", {})
 
         # =========================
@@ -80,8 +80,8 @@ class TerrainModel:
         # =========================
 
         if shape == "round":
-            radius = int(shape_params.get("radius", 500))
-            dia = radius * 2
+            radius = int(shape_params.get("radius", 513))
+            dia = (radius * 2) - 1
             if self.shape != (dia, dia):
                 self.update_grid_size(dia)
 
@@ -99,7 +99,7 @@ class TerrainModel:
                     octaves=params['octaves_base'], 
                     base=params['seed'] + params['seed_adder'],
                     lacunarity=params.get('base_lacunarity', 2.0),
-                    persistence=params.get('base_persistence', 0.5)
+                    persistence=params.get('base_persistence', 0.6)
                 )
                 z_min, z_max = self.Z_base_map.min(), self.Z_base_map.max()
                 if z_max > z_min:
@@ -110,7 +110,7 @@ class TerrainModel:
                 self.Y * self.upper_scale, 
                 octaves=params['octaves'], 
                 base=params['seed'],
-                lacunarity=params.get('lacunarity', 2.0),
+                lacunarity=params.get('lacunarity', 2.10),
                 persistence=params.get('persistence', 0.5)
             )
 
@@ -120,19 +120,18 @@ class TerrainModel:
                 self.Z_base = (noise_detail + 1) / 2.0
 
             # --- LÓGICA DE ISOLAMENTO DE CONTINENTES ---
-            num_continents = params.get("continents_count", 1)
-            centers = get_continent_centers(num_continents)
+            num_continents = params.get("continents_count", 5)
+            cont_size = params.get("continent_size", 0.06)
 
-           
+            centers = get_continent_centers(num_continents)
             influence_mask = generate_multi_point_mask(
                 self.shape, 
                 centers, 
-                radius=0.18,  
-                softness=0.2  
-            )       
-    
+                size_factor=cont_size,
+                softness=0.15         
+            )
+
             if params['use_base_map']:
-             
                 self.Z_base = (self.Z_base_map * influence_mask) + (noise_detail * params['amplitude_factor'] * influence_mask)
             else:
                 self.Z_base = ((noise_detail + 1) / 2.0) * influence_mask
@@ -147,7 +146,7 @@ class TerrainModel:
             width = height * 2
 
             if self.shape != (height, width): 
-                self.update_grid_size(width)  # temporário
+                self.update_grid_size(width) 
                 self.shape = (height, width)
                 self.X, self.Y = np.meshgrid(np.arange(width), np.arange(height))
                 self.X_flat = self.X.ravel()
@@ -163,7 +162,7 @@ class TerrainModel:
                                                        base=params['seed'], 
                                                        repeatx=repeat_x, 
                                                        repeaty=repeat_y,
-                                                       lacunarity=params.get('lacunarity', 2.0),
+                                                       lacunarity=params.get('lacunarity', 2.1),
                                                        persistence=params.get('persistence', 0.5)))
             
             if params['use_base_map']:
@@ -172,7 +171,7 @@ class TerrainModel:
                                                                 repeatx=repeat_x, 
                                                                 repeaty=repeat_y,
                                                                 lacunarity=params.get('base_lacunarity', 2.0),
-                                                                persistence=params.get('base_persistence', 0.5)))
+                                                                persistence=params.get('base_persistence', 0.6)))
                 self.Z_base_map = vnoise_base(
                     self.X * params['base_scale'], 
                     self.Y * params['base_scale']
@@ -192,7 +191,7 @@ class TerrainModel:
                 self.Z_base = (noise_detail + 1) / 2.0
 
             self.Z_base = np.clip(self.Z_base, 0.0, params['clip_max'])
-            self.mask[:] = True  # Full pra sphere
+            self.mask[:] = True  
         
         else:  # square
             if self.shape[0] != shape_params.get("side", 500):
@@ -211,7 +210,7 @@ class TerrainModel:
                     octaves=params['octaves_base'], 
                     base=params['seed'] + params['seed_adder'],
                     lacunarity=params.get('base_lacunarity', 2.0),
-                    persistence=params.get('base_persistence', 0.5)
+                    persistence=params.get('base_persistence', 0.6)
                 )
                 z_min, z_max = self.Z_base_map.min(), self.Z_base_map.max()
                 if z_max > z_min:
@@ -222,7 +221,7 @@ class TerrainModel:
                 self.Y * self.upper_scale, 
                 octaves=params['octaves'], 
                 base=params['seed'],
-                lacunarity=params.get('lacunarity', 2.0),
+                lacunarity=params.get('lacunarity', 2.1),
                 persistence=params.get('persistence', 0.5)
             )
 

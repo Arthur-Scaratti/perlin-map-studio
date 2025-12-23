@@ -24,10 +24,10 @@ class VisPyCanvas(scene.SceneCanvas):
         
         # Configs de biomas (defaults hardcoded, mas agora pode ser sobrescrito)
         self.biome_configs = [
-            {'min': 0.0, 'max': 0.5, 'color': [0.0, 0.3, 0.6, 1.0]},  # Sea
-            {'min': 0.5, 'max': 0.55, 'color': [0.8, 0.7, 0.4, 1.0]},  # Sand
-            {'min': 0.55, 'max': 0.9, 'color': [0.2, 0.5, 0.2, 1.0]},  # Grass
-            {'min': 0.9, 'max': 1.5, 'color': [1.0, 1.0, 1.0, 1.0]}   # Snow
+            {'min': 0.0, 'max': 0.35, 'color': [0.0549, 0.1098, 0.2980, 1.0]},  # Sea
+            {'min': 0.35, 'max': 0.38, 'color': [0.8314, 0.8000, 0.6471, 1.0]},  # Sand
+            {'min': 0.38, 'max': 0.75, 'color': [0.1098, 0.2627, 0.1804, 1.0]},  # Grass
+            {'min': 0.75, 'max': 1.5, 'color': [1.0, 1.0, 1.0, 1.0]}   # Snow
         ]
         
         self.update_visualization(150)

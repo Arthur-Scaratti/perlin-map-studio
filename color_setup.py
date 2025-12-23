@@ -67,7 +67,6 @@ class ColorEditorWidget(QWidget):
             item = self.color_layout.takeAt(0)
             if item.widget(): item.widget().deleteLater()
 
-        # Sempre trabalhamos com a lista ordenada por altura na UI
         self.colors = self.get_sorted_colors()
         
         for i, data in enumerate(self.colors):

@@ -1,8 +1,8 @@
 import numpy as np
-from noise import pnoise2
 import time
 from config import DEFAULT_GRID_SIZE
 from mask_utils import get_continent_centers, generate_multi_point_mask
+from numba import jit, prange, njit
 
 class TerrainModel:
     def __init__(self):
@@ -68,6 +68,85 @@ class TerrainModel:
     def get_points_data(self, amplitude):
         Z = self.Z_base.ravel() * (amplitude / 10.0)
         return np.column_stack((self.X_flat, self.Y_flat, Z))
+    
+    def generate_fbm_noise(self, X, Y, scale, octaves, persistence, lacunarity, base, repeatx=None, repeaty=None):
+        height, width = X.shape
+
+        ps = []
+        for o in range(octaves):
+            np.random.seed(base + o)
+            p = np.arange(256, dtype=np.int32)
+            np.random.shuffle(p)
+            p = np.concatenate((p, p))
+            ps.append(p)
+
+        @njit
+        def fade(t):
+            return 6 * t**5 - 15 * t**4 + 10 * t**3
+
+        @njit
+        def lerp(a, b, x):
+            return a + x * (b - a)
+
+        @njit
+        def grad(hash_code, x, y):
+            h = hash_code % 4
+            if h == 0:
+                return 0.70710678118 * (x + y)
+            elif h == 1:
+                return 0.70710678118 * (-x + y)
+            elif h == 2:
+                return 0.70710678118 * (x - y)
+            else:
+                return 0.70710678118 * (-x - y)
+
+        @njit
+        def perlin_scalar(x, y, p):
+            if repeatx is not None:
+                x = x % repeatx
+            if repeaty is not None:
+                y = y % repeaty
+
+            xi = int(x) & 255
+            yi = int(y) & 255
+            xf = x - int(x)
+            yf = y - int(y)
+
+            u = fade(xf)
+            v = fade(yf)
+
+            aa = p[p[xi] + yi]
+            ab = p[p[xi] + yi + 1]
+            ba = p[p[xi + 1] + yi]
+            bb = p[p[xi + 1] + yi + 1]
+
+            x1 = lerp(grad(aa, xf, yf), grad(ba, xf - 1, yf), u)
+            x2 = lerp(grad(ab, xf, yf - 1), grad(bb, xf - 1, yf - 1), u)
+
+            return lerp(x1, x2, v) * np.sqrt(2)
+
+        @njit(parallel=True)
+        def compute_noise(ps, X, Y, scale, octaves, persistence, lacunarity, repeatx, repeaty, height, width):
+            noise_grid = np.zeros((height, width), dtype=np.float64)
+            
+            for o in prange(octaves):
+                freq = scale * (lacunarity ** o)
+                amp = persistence ** o
+                
+                p = ps[o]
+                
+                for i in prange(height):
+                    for j in prange(width):
+                        nx = X[i, j] * freq
+                        ny = Y[i, j] * freq
+                        val = perlin_scalar(nx, ny, p)
+                        noise_grid[i, j] += val * amp
+            
+            return noise_grid
+
+        noise_grid = compute_noise(ps, X, Y, scale, octaves, persistence, lacunarity, repeatx, repeaty, height, width)
+        
+        return noise_grid
 
     def configure_and_generate(self, params):
         start_total = time.time()
@@ -91,27 +170,21 @@ class TerrainModel:
             
     
             self.upper_scale = params['upper_scale']
-            vnoise = np.vectorize(pnoise2)
+            
             if params['use_base_map']:
-                self.Z_base_map = vnoise(
-                    self.X * params['base_scale'], 
-                    self.Y * params['base_scale'], 
-                    octaves=params['octaves_base'], 
-                    base=params['seed'] + params['seed_adder'],
-                    lacunarity=params.get('base_lacunarity', 2.0),
-                    persistence=params.get('base_persistence', 0.6)
+                self.Z_base_map = self.generate_fbm_noise(
+                    self.X, self.Y, params['base_scale'], params['octaves_base'],
+                    params.get('base_persistence', 0.6), params.get('base_lacunarity', 2.0),
+                    params['seed'] + params['seed_adder']
                 )
                 z_min, z_max = self.Z_base_map.min(), self.Z_base_map.max()
                 if z_max > z_min:
                     self.Z_base_map = (self.Z_base_map - z_min) / (z_max - z_min)
 
-            noise_detail = vnoise(
-                self.X * self.upper_scale, 
-                self.Y * self.upper_scale, 
-                octaves=params['octaves'], 
-                base=params['seed'],
-                lacunarity=params.get('lacunarity', 2.10),
-                persistence=params.get('persistence', 0.5)
+            noise_detail = self.generate_fbm_noise(
+                self.X, self.Y, self.upper_scale, params['octaves'],
+                params.get('persistence', 0.5), params.get('lacunarity', 2.1),
+                params['seed']
             )
 
             if params['use_base_map']:
@@ -146,7 +219,6 @@ class TerrainModel:
             width = height * 2
 
             if self.shape != (height, width): 
-                self.update_grid_size(width) 
                 self.shape = (height, width)
                 self.X, self.Y = np.meshgrid(np.arange(width), np.arange(height))
                 self.X_flat = self.X.ravel()
@@ -158,31 +230,20 @@ class TerrainModel:
             repeat_x = width
             repeat_y = height 
             
-            vnoise = np.vectorize(lambda x, y: pnoise2(x, y, octaves=params['octaves'], 
-                                                       base=params['seed'], 
-                                                       repeatx=repeat_x, 
-                                                       repeaty=repeat_y,
-                                                       lacunarity=params.get('lacunarity', 2.1),
-                                                       persistence=params.get('persistence', 0.5)))
-            
             if params['use_base_map']:
-                vnoise_base = np.vectorize(lambda x, y: pnoise2(x, y, octaves=params['octaves_base'], 
-                                                                base=params['seed'] + params['seed_adder'], 
-                                                                repeatx=repeat_x, 
-                                                                repeaty=repeat_y,
-                                                                lacunarity=params.get('base_lacunarity', 2.0),
-                                                                persistence=params.get('base_persistence', 0.6)))
-                self.Z_base_map = vnoise_base(
-                    self.X * params['base_scale'], 
-                    self.Y * params['base_scale']
+                self.Z_base_map = self.generate_fbm_noise(
+                    self.X, self.Y, params['base_scale'], params['octaves_base'],
+                    params.get('base_persistence', 0.6), params.get('base_lacunarity', 2.0),
+                    params['seed'] + params['seed_adder'], repeatx=repeat_x, repeaty=repeat_y
                 )
                 z_min, z_max = self.Z_base_map.min(), self.Z_base_map.max()
                 if z_max > z_min:
                     self.Z_base_map = (self.Z_base_map - z_min) / (z_max - z_min)
 
-            noise_detail = vnoise(
-                self.X * self.upper_scale, 
-                self.Y * self.upper_scale
+            noise_detail = self.generate_fbm_noise(
+                self.X, self.Y, self.upper_scale, params['octaves'],
+                params.get('persistence', 0.5), params.get('lacunarity', 2.1),
+                params['seed'], repeatx=repeat_x, repeaty=repeat_y
             )
 
             if params['use_base_map']:
@@ -199,30 +260,23 @@ class TerrainModel:
             self.mask[:] = True
         
             self.upper_scale = params['upper_scale']
-            vnoise = np.vectorize(pnoise2)
             # =========================
             # BASE MAP
             # =========================
             if params['use_base_map']:
-                self.Z_base_map = vnoise(
-                    self.X * params['base_scale'], 
-                    self.Y * params['base_scale'], 
-                    octaves=params['octaves_base'], 
-                    base=params['seed'] + params['seed_adder'],
-                    lacunarity=params.get('base_lacunarity', 2.0),
-                    persistence=params.get('base_persistence', 0.6)
+                self.Z_base_map = self.generate_fbm_noise(
+                    self.X, self.Y, params['base_scale'], params['octaves_base'],
+                    params.get('base_persistence', 0.6), params.get('base_lacunarity', 2.0),
+                    params['seed'] + params['seed_adder']
                 )
                 z_min, z_max = self.Z_base_map.min(), self.Z_base_map.max()
                 if z_max > z_min:
                     self.Z_base_map = (self.Z_base_map - z_min) / (z_max - z_min)
 
-            noise_detail = vnoise(
-                self.X * self.upper_scale, 
-                self.Y * self.upper_scale, 
-                octaves=params['octaves'], 
-                base=params['seed'],
-                lacunarity=params.get('lacunarity', 2.1),
-                persistence=params.get('persistence', 0.5)
+            noise_detail = self.generate_fbm_noise(
+                self.X, self.Y, self.upper_scale, params['octaves'],
+                params.get('persistence', 0.5), params.get('lacunarity', 2.1),
+                params['seed']
             )
 
             if params['use_base_map']:

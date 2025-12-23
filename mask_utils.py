@@ -4,12 +4,12 @@ def get_continent_centers(count):
     """Retorna coordenadas normalizadas (0 a 1) para N continentes."""
     if count == 1: return [(0.5, 0.5)]
     if count == 2: return [(0.3, 0.5), (0.7, 0.5)]
-    if count == 3: return [(0.5, 0.28), (0.25, 0.72), (0.75, 0.72)]
+    if count == 3: return [(0.5, 0.75), (0.283, 0.375), (0.717, 0.375)]
     if count == 4: return [(0.25, 0.25), (0.75, 0.25), (0.25, 0.75), (0.75, 0.75)]
     if count == 5: return [(0.25, 0.25), (0.75, 0.25), (0.25, 0.75), (0.75, 0.75), (0.5, 0.5)]
     return [(0.5, 0.5)]
 
-def generate_multi_point_mask(shape, centers, size_factor=0.3, softness=0.15):
+def generate_multi_point_mask(shape, centers, size_factor=0.25, softness=0.15):
 
     h, w = shape
     y, x = np.ogrid[:h, :w]

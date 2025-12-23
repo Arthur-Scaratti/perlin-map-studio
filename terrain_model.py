@@ -31,6 +31,7 @@ class TerrainModel:
         self.mask = np.ones(self.shape, dtype=bool) 
 
     def get_mesh_faces(self):
+        start = time.time()
         R, C = self.shape
         indices = np.arange(R * C).reshape(R, C)
 
@@ -63,6 +64,7 @@ class TerrainModel:
         f1 = f1[mask_f1]
         f2 = f2[mask_f2]
 
+        print(f"[Model] get_mesh_faces: {time.time() - start:.2f}s")
         return np.vstack((f1, f2)).astype(np.uint32)
 
     def get_points_data(self, amplitude):

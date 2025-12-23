@@ -1,3 +1,4 @@
+import time
 from PyQt6.QtWidgets import (
     QMainWindow, QVBoxLayout, QSlider, QLabel, QFileDialog,
     QMessageBox, QPushButton, QDockWidget, QWidget,
@@ -190,6 +191,7 @@ class MainWindow(QMainWindow):
 
 
     def on_generate_request(self, params):
+        start = time.time()
         self.last_params = params
         old_shape = self.model.shape
         self.model.configure_and_generate(params)
@@ -197,6 +199,7 @@ class MainWindow(QMainWindow):
             self.vispy_widget.faces = self.model.get_mesh_faces()
             self.vispy_widget.update_camera()
         self.vispy_widget.update_visualization(self.pending_amplitude)
+        print(f"[Window] on_generate_request_total: {time.time() - start:.2f}s")
 
     def on_amplitude_change(self, value):
         self.pending_amplitude = float(value)

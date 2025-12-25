@@ -73,7 +73,7 @@ class VisPyCanvas(scene.SceneCanvas):
         colors = np.zeros((n_points, 4), dtype=np.float32)
         colors[:, 3] = 1.0
         
-        for biome in self.biome_configs:
+        for biome in self.color_configs:
             mask = (z_raw >= biome['min']) & (z_raw < biome['max'])
             colors[mask] = biome['color']
         

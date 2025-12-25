@@ -9,8 +9,8 @@ class TerrainModel:
         self.shape = (DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE)
         self.upper_scale = 0.011 
         
-        self.Z_base = None
-        self.Z_base_map = None
+        self.Z_base = np.zeros(self.shape, dtype=np.float32)
+        self.Z_base_map = np.zeros(self.shape, dtype=np.float32)
         
         self.X, self.Y = None, None
         self.X_flat, self.Y_flat = None, None
@@ -25,31 +25,27 @@ class TerrainModel:
             np.arange(self.shape[0]),
             np.arange(self.shape[1])
         )
-        self.X_flat = self.X.ravel()
-        self.Y_flat = self.Y.ravel()
-        self.Z_base = np.zeros(self.shape)
+        self.X_flat = self.X.ravel().astype(np.int32)
+        self.Y_flat = self.Y.ravel().astype(np.int32)
+        self.Z_base = np.zeros(self.shape, dtype=np.float32)
         self.mask = np.ones(self.shape, dtype=bool) 
 
     def get_mesh_faces(self, step=1):
-        """
-        Gera os índices das faces. Se step > 1, gera para uma versão reduzida do grid.
-        """
         start = time.time()
         
-        # Se estamos usando step, trabalhamos com as dimensões reduzidas
         R_orig, C_orig = self.shape
         
         # Slicing nas dimensões
         y_slice = slice(0, R_orig, step)
         x_slice = slice(0, C_orig, step)
         
-        # A máscara também precisa ser fatiada
+        # A máscara fatiada
         mask_view = self.mask[y_slice, x_slice]
         
-        # Novas dimensões da visualização
+        # Novas dimensões da view
         R, C = mask_view.shape
         
-        indices = np.arange(R * C).reshape(R, C)
+        indices = np.arange(R * C, dtype=np.uint32).reshape(R, C)
 
         v1 = indices[:-1, :-1].ravel()
         v2 = indices[:-1, 1:].ravel()
@@ -158,7 +154,7 @@ class TerrainModel:
 
         @njit(parallel=True)
         def compute_noise(ps, X, Y, scale, octaves, persistence, lacunarity, repeatx, repeaty, height, width):
-            noise_grid = np.zeros((height, width), dtype=np.float64)
+            noise_grid = np.zeros((height, width), dtype=np.float32)
             
             for o in prange(octaves):
                 freq = scale * (lacunarity ** o)
@@ -196,7 +192,7 @@ class TerrainModel:
                 self.update_grid_size(dia)
 
             cx = cy = radius
-            dist = np.sqrt((self.X - cx) ** 2 + (self.Y - cy) ** 2)
+            dist = np.sqrt((self.X - cx) ** 2 + (self.Y - cy) ** 2).astype(np.float32)
             self.mask = dist <= radius
             
     

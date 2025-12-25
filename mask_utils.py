@@ -13,15 +13,15 @@ def generate_multi_point_mask(shape, centers, size_factor=0.25, softness=0.15):
 
     h, w = shape
     y, x = np.ogrid[:h, :w]
-    final_mask = np.zeros(shape)
-    
-    dist_center = np.sqrt((x - w/2)**2 + (y - h/2)**2) / (max(h, w)/2)
+    final_mask = np.zeros(shape, dtype=np.float32)
+    max_dim = max(h, w)
+    dist_center = (np.sqrt((x - w/2)**2 + (y - h/2)**2) / (max_dim/2)).astype(np.float32)
 
     global_safety = 1.0 - np.clip((dist_center - 0.9) / 0.1, 0, 1)
 
     for (cx_norm, cy_norm) in centers:
         cx, cy = cx_norm * w, cy_norm * h
-        dist = np.sqrt((x - cx)**2 + (y - cy)**2) / max(h, w)
+        dist = (np.sqrt((x - cx)**2 + (y - cy)**2) / max_dim).astype(np.float32)
         
         mask = 1.0 - np.clip((dist - size_factor) / softness, 0, 1)
         final_mask = np.maximum(final_mask, mask)

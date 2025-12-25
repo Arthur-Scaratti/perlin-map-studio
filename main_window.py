@@ -182,7 +182,7 @@ class MainWindow(QMainWindow):
             self.slider.setValue(int(self.pending_amplitude))
             
             
-            self.vispy_widget.faces = self.model.get_mesh_faces()
+            #self.vispy_widget.faces = self.model.get_mesh_faces()
             self.vispy_widget.update_camera()
             self.vispy_widget.update_visualization(self.pending_amplitude)
             
@@ -196,7 +196,6 @@ class MainWindow(QMainWindow):
         old_shape = self.model.shape
         self.model.configure_and_generate(params)
         if old_shape != self.model.shape:
-            self.vispy_widget.faces = self.model.get_mesh_faces()
             self.vispy_widget.update_camera()
         self.vispy_widget.update_visualization(self.pending_amplitude)
         print(f"[Window] on_generate_request_total: {time.time() - start:.2f}s")

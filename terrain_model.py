@@ -30,9 +30,25 @@ class TerrainModel:
         self.Z_base = np.zeros(self.shape)
         self.mask = np.ones(self.shape, dtype=bool) 
 
-    def get_mesh_faces(self):
+    def get_mesh_faces(self, step=1):
+        """
+        Gera os índices das faces. Se step > 1, gera para uma versão reduzida do grid.
+        """
         start = time.time()
-        R, C = self.shape
+        
+        # Se estamos usando step, trabalhamos com as dimensões reduzidas
+        R_orig, C_orig = self.shape
+        
+        # Slicing nas dimensões
+        y_slice = slice(0, R_orig, step)
+        x_slice = slice(0, C_orig, step)
+        
+        # A máscara também precisa ser fatiada
+        mask_view = self.mask[y_slice, x_slice]
+        
+        # Novas dimensões da visualização
+        R, C = mask_view.shape
+        
         indices = np.arange(R * C).reshape(R, C)
 
         v1 = indices[:-1, :-1].ravel()
@@ -46,8 +62,8 @@ class TerrainModel:
         # =========================
         # MÁSCARAS DE FACE (vetorizadas)
         # =========================
-
-        m = self.mask
+        # Usamos a mask_view (reduzida) aqui
+        m = mask_view
 
         mask_f1 = (
             m[:-1, :-1] &
@@ -64,12 +80,25 @@ class TerrainModel:
         f1 = f1[mask_f1]
         f2 = f2[mask_f2]
 
-        print(f"[Model] get_mesh_faces: {time.time() - start:.2f}s")
+        print(f"[Model] get_mesh_faces (step={step}): {time.time() - start:.4f}s")
         return np.vstack((f1, f2)).astype(np.uint32)
 
-    def get_points_data(self, amplitude):
-        Z = self.Z_base.ravel() * (amplitude / 10.0)
-        return np.column_stack((self.X_flat, self.Y_flat, Z))
+    def get_points_data(self, amplitude, step=1):
+        # Fatia o Z e os grids X/Y
+        z_view = self.Z_base[::step, ::step]
+        x_view = self.X[::step, ::step]
+        y_view = self.Y[::step, ::step]
+        
+        # Ravel
+        z_flat = z_view.ravel() * (amplitude / 10.0)
+        x_flat = x_view.ravel()
+        y_flat = y_view.ravel()
+        
+        return np.column_stack((x_flat, y_flat, z_flat))
+    
+    # Adicione este helper para pegar o Z cru reduzido (usado para colorir)
+    def get_z_flat(self, step=1):
+        return self.Z_base[::step, ::step].ravel()
     
     def generate_fbm_noise(self, X, Y, scale, octaves, persistence, lacunarity, base, repeatx=None, repeaty=None):
         height, width = X.shape

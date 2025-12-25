@@ -69,7 +69,7 @@ class SetupForm(QWidget):
         form_square = QFormLayout()
 
         self.spin_square_side = QSpinBox()
-        self.spin_square_side.setRange(50, 4000)
+        self.spin_square_side.setRange(50, 10000)
         self.spin_square_side.setValue(513)
         form_square.addRow("Side:", self.spin_square_side)
 
@@ -81,7 +81,7 @@ class SetupForm(QWidget):
         form_round = QFormLayout()
 
         self.spin_round_radius = QSpinBox()
-        self.spin_round_radius.setRange(50, 4000)
+        self.spin_round_radius.setRange(50, 10000)
         self.spin_round_radius.setValue(513)
         form_round.addRow("Radius:", self.spin_round_radius)
 
@@ -94,7 +94,7 @@ class SetupForm(QWidget):
         form_sphere = QFormLayout()
 
         self.spin_sphere_height = QSpinBox()
-        self.spin_sphere_height.setRange(50, 4000)
+        self.spin_sphere_height.setRange(50, 10000)
         self.spin_sphere_height.setSingleStep(10)
         self.spin_sphere_height.setValue(513)
         form_sphere.addRow("Height:", self.spin_sphere_height)
@@ -124,7 +124,7 @@ class SetupForm(QWidget):
         form_base.addRow("Base Seed Inc. :", self.spin_seed_adder)
 
         self.spin_base_scale = QDoubleSpinBox()
-        self.spin_base_scale.setRange(0.001, 0.01)
+        self.spin_base_scale.setRange(0.0001, 0.01)
         self.spin_base_scale.setDecimals(4)
         self.spin_base_scale.setSingleStep(0.0005)
         self.spin_base_scale.setValue(0.0045)
@@ -170,7 +170,7 @@ class SetupForm(QWidget):
         form_upper.addRow("Clip Max Height:", self.spin_clip)
         
         self.spin_upper_scale = QDoubleSpinBox()
-        self.spin_upper_scale.setRange(0.001, 0.1)
+        self.spin_upper_scale.setRange(0.0001, 0.1)
         self.spin_upper_scale.setDecimals(4)
         self.spin_upper_scale.setSingleStep(0.0005)
         self.spin_upper_scale.setValue(0.011)
